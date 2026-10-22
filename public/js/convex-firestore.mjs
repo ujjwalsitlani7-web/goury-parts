@@ -436,7 +436,12 @@ export function onAuthStateChanged(_auth, cb) {
 function setUser(u) { _user = u; _authCbs.forEach((cb) => { try { cb(u); } catch (_) {} }); }
 async function tokenWorks() {
   try { return (await q("ping")) === true; }
-  catch (e) { if (/bad_token|server_not_configured/.test(String(e && e.message))) return false; throw e; }
+  catch (e) {
+    // Production Convex hides error text ("Server Error"); the code is in e.data.
+    const why = String(e && e.data) + " " + String(e && e.message);
+    if (/bad_token|server_not_configured/.test(why)) return false;
+    throw e;
+  }
 }
 export async function signInAnonymously(_auth) {
   // While this is true, the startup cloud pull keeps waiting (however long the person
