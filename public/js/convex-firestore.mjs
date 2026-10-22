@@ -439,6 +439,12 @@ async function tokenWorks() {
   catch (e) { if (/bad_token|server_not_configured/.test(String(e && e.message))) return false; throw e; }
 }
 export async function signInAnonymously(_auth) {
+  // While this is true, the startup cloud pull keeps waiting (however long the person
+  // takes to type the shop token) instead of giving up after 5 s and running without data.
+  window._convexSigningIn = true;
+  try { return await _signIn(_auth); } finally { window._convexSigningIn = false; }
+}
+async function _signIn(_auth) {
   // Real Firebase sign-in is still needed for the attendance/JARVIS bridges and old photos.
   if (_realAuthObj) realAuth.signInAnonymously(_realAuthObj).catch((e) => console.warn("[firebase bridges] anon auth failed:", e.message));
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -447,7 +453,7 @@ export async function signInAnonymously(_auth) {
     } catch (e) {
       // Network/offline: keep running on local data, retry when back online.
       console.warn("[convex] connect failed, will retry when online:", e.message);
-      window.addEventListener("online", () => signInAnonymously(_auth), { once: true });
+      window.addEventListener("online", () => { signInAnonymously(_auth).catch(() => {}); }, { once: true });
       throw e;
     }
     const had = !!token();
@@ -483,6 +489,18 @@ export async function deleteObject(sref) {
   await m("fileDelete", { path: sref.fullPath });
   if (_realStorage) { try { await realSt.deleteObject(realSt.ref(_realStorage, sref.fullPath)); } catch (_) {} }
 }
+
+// Never create demo sample data on a device that isn't connected to the shop yet:
+// the app seeds demo data when it finds no cloud data, and that demo data would later
+// be merged into the real shop once the device connects.
+(function guardDemoSeed() {
+  const orig = window.seedSampleDataIfEmpty;
+  if (typeof orig !== "function") return;
+  window.seedSampleDataIfEmpty = function () {
+    if (!_user) { console.warn("[convex] not connected: skipped demo sample data"); return; }
+    return orig.apply(this, arguments);
+  };
+})();
 
 // For support/debugging from the console.
 window._convexAdapter = { partsSync, cacheClear: async () => { await cclear("kv"); await cclear("parts"); await cclear("meta"); } };
