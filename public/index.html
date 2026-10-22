@@ -5,9 +5,9 @@
 <!-- CSP: blocks any injected external script tag not from self/jsdelivr/gstatic, blocks plugins,
      locks base URI and form targets. 'unsafe-inline' is required by the app's inline handlers —
      inline-injection defense remains escapeHtml() at render boundaries. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; font-src 'self' data:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; font-src 'self' data: https://fonts.gstatic.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0f766e">
+<meta name="theme-color" content="#0A0D12">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2312,6 +2312,7 @@ injector pump tractor"></textarea>
      H = Wholesale (creditPrice) · C = Cost (costPrice) · R = Retail (instantPrice)
      ═══════════════════════════════════════════════════════════════════ -->
 <link rel="stylesheet" href="/css/extras.css">
+<link rel="stylesheet" href="/css/dark-theme.css">
 <div id="gp-print-area"></div>
 
 <script src="/js/11-app-extras.js"></script>
