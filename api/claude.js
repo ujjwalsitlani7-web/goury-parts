@@ -30,11 +30,14 @@ function fail(res, status, message) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return fail(res, 405, 'Method not allowed');
   if (!originOk(req)) return fail(res, 403, 'Origin not allowed');
+  if (!process.env.SHOP_TOKEN || !process.env.ANTHROPIC_API_KEY) {
+    // Not configured yet: say so plainly, without asking devices for a token.
+    return fail(res, 503, 'AI is not set up yet. Owner: add ANTHROPIC_API_KEY and SHOP_TOKEN in Vercel, then redeploy.');
+  }
   if (!tokenOk(req.headers['x-shop-token'])) {
     res.setHeader('x-proxy-auth', 'failed'); // tells the app to ask for the token again
     return fail(res, 401, 'Shop token missing or wrong');
   }
-  if (!process.env.ANTHROPIC_API_KEY) return fail(res, 500, 'Server has no ANTHROPIC_API_KEY set');
 
   const body = req.body && typeof req.body === 'object' ? req.body : null;
   if (!body || !Array.isArray(body.messages) || typeof body.model !== 'string') {
