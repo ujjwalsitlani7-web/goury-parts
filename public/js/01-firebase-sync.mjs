@@ -277,7 +277,7 @@
   // Pull all state keys from Firestore on startup
   window.firebasePull = async function() {
     if (!window._firebaseAuthed) {
-      await new Promise(r=>{let w=0;const iv=setInterval(()=>{w+=200;if(window._firebaseAuthed||w>=5000){clearInterval(iv);r();}},200);});
+      await new Promise(r=>{let w=0;const iv=setInterval(()=>{w+=200;if(window._firebaseAuthed||(w>=5000&&!window._convexSigningIn)){clearInterval(iv);r();}},200);});
       if (!window._firebaseAuthed) { setSyncStatus('offline','⚡ Auth timeout'); return null; }
     }
     setSyncStatus('syncing', '☁ Loading cloud data…');
