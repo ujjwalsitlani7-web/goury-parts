@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Goury Parts: know every part from one photo</title>
+<meta name="description" content="Goury Parts runs a spare parts business: it identifies parts from a photo with Claude Vision, and handles stock, billing, collections and suppliers.">
+<meta name="theme-color" content="#0A0D12">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#0A0D12; --surface:#121722; --raised:#1A2130; --line:#263042;
+  --text:#E8EDF5; --muted:#93A0B4; --lime:#C6F432; --amber:#FFB547;
+  --display:'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono:'JetBrains Mono', ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+body{margin:0;background:var(--ground);color:var(--text);font-family:var(--display);font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--lime);outline-offset:3px;border-radius:8px}
+.wrap{width:min(1180px,100% - 40px);margin-inline:auto}
+
+/* Nav */
+.nav{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:6px;padding:6px 6px 6px 14px;border-radius:999px;background:rgba(18,23,34,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);max-width:calc(100% - 24px)}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:700;margin-right:8px;white-space:nowrap}
+.brand-mark{width:28px;height:28px;border-radius:9px;background:var(--lime);display:grid;place-items:center}
+.nav a.link{text-decoration:none;color:var(--muted);font-size:14px;padding:10px 12px;border-radius:999px;white-space:nowrap}
+.nav a.link:hover{color:var(--text)}
+.btn{white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:0 22px;border-radius:999px;font-weight:700;font-size:16px;text-decoration:none;border:1px solid transparent;cursor:pointer}
+.btn-lime{background:var(--lime);color:var(--ground)}
+.btn-lime:hover{background:#D6FF55}
+.btn-ghost{border-color:var(--line);color:var(--text);background:transparent}
+.btn-ghost:hover{border-color:#3A4659}
+.nav .btn{min-height:40px;padding:0 16px;font-size:14px}
+@media (max-width:760px){.nav a.link{display:none}}
+
+/* Hero */
+.hero{min-height:100svh;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);align-items:center;gap:24px;padding:120px 0 60px}
+.hero h1{font-size:clamp(44px,6.4vw,92px);line-height:.94;letter-spacing:-.045em;margin:0 0 26px;font-weight:700}
+.hero h1 .line{display:block}
+.hero h1 .thin{font-weight:400;color:#C9D2E0}
+.hero p.lead{font-size:clamp(17px,1.6vw,20px);color:var(--muted);max-width:33em;margin:0 0 34px}
+.hero .ctas{display:flex;gap:12px;flex-wrap:wrap}
+.scanner{position:relative;aspect-ratio:1/1;width:100%;max-width:620px;justify-self:center}
+.scanner canvas{position:absolute;inset:0;width:100%;height:100%}
+.readout{position:absolute;right:4%;bottom:10%;background:rgba(18,23,34,.9);border:1px solid var(--line);border-radius:18px;padding:14px 16px;min-width:230px;transition:opacity .5s,transform .5s}
+.readout.dim{opacity:0;transform:translateY(8px)}
+.readout .k{font-size:12px;color:var(--muted)}
+.readout .v{font-size:18px;font-weight:700;letter-spacing:-.01em}
+.readout .code{font-family:var(--mono);color:var(--lime);font-size:14px}
+@media (max-width:900px){.hero{grid-template-columns:1fr;padding-top:110px}.scanner{max-width:460px}}
+
+/* Section heads */
+.section{padding:120px 0}
+.section h2{font-size:clamp(34px,4.6vw,60px);line-height:1;letter-spacing:-.035em;margin:0 0 20px;font-weight:700;max-width:14em}
+.section .intro{color:var(--muted);max-width:34em;margin:0}
+
+/* Scroll stories */
+.story{position:relative;height:320vh}
+.story .stick{position:sticky;top:0;height:100svh;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);align-items:center;gap:48px}
+.steps{position:relative;min-height:260px}
+.step{position:absolute;inset:0 0 auto 0;opacity:0;transform:translateY(16px);transition:opacity .45s ease,transform .45s ease;pointer-events:none}
+.story[data-step="0"] .step[data-i="0"],.story[data-step="1"] .step[data-i="1"],.story[data-step="2"] .step[data-i="2"],.story[data-step="3"] .step[data-i="3"]{opacity:1;transform:none;pointer-events:auto}
+.step h3{font-size:clamp(28px,3.4vw,44px);line-height:1.05;letter-spacing:-.03em;margin:0 0 14px;font-weight:700}
+.step p{color:var(--muted);margin:0;max-width:30em}
+.dots{display:flex;gap:8px;margin-bottom:28px}
+.dots span{width:28px;height:4px;border-radius:999px;background:var(--line);transition:background .3s}
+.story[data-step="0"] .dots span:nth-child(1),.story[data-step="1"] .dots span:nth-child(-n+2),.story[data-step="2"] .dots span:nth-child(-n+3),.story[data-step="3"] .dots span:nth-child(-n+4){background:var(--lime)}
+.visual{position:relative;height:min(72svh,620px);border-radius:28px;background:var(--surface);border:1px solid var(--line);overflow:hidden}
+@media (max-width:900px){.story{height:auto}.story .stick{position:relative;height:auto;grid-template-columns:1fr;padding:80px 0}.steps{min-height:0}.step{position:relative;opacity:1;transform:none;margin-bottom:28px}.dots{display:none}.visual{height:420px}}
+
+/* Story 1: the wall of near-identical parts */
+.wall{position:absolute;inset:28px;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px;align-content:center}
+.tile{aspect-ratio:1;border-radius:12px;background:var(--raised);display:grid;place-items:center;transition:opacity .5s,transform .5s,background .5s}
+.tile svg{width:62%;height:62%}
+.story[data-step="1"] .tile:not(.pick),.story[data-step="2"] .tile:not(.pick),.story[data-step="3"] .tile:not(.pick){opacity:.18}
+.story[data-step="2"] .tile.pick,.story[data-step="3"] .tile.pick{background:var(--lime);transform:scale(1.18)}
+.pick-label{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ground);border:1px solid var(--line);border-radius:14px;padding:10px 14px;white-space:nowrap;opacity:0;transition:opacity .4s}
+.story[data-step="3"] .pick-label{opacity:1}
+.pick-label .code{font-family:var(--mono);color:var(--lime)}
+
+/* Story 2: counter */
+.counter{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:clamp(24px,5vw,56px)}
+.counter .n{font-family:var(--mono);font-size:clamp(64px,10vw,140px);font-weight:700;letter-spacing:-.05em;line-height:1}
+.counter .u{color:var(--muted);font-size:18px;margin-top:10px}
+.bar{height:10px;border-radius:999px;background:var(--raised);margin-top:36px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--lime);border-radius:999px}
+.marks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:13px;color:var(--muted);margin-top:10px}
+
+/* Story 3: phone */
+.phone{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);height:min(560px,88%);aspect-ratio:9/18.5;max-width:86%;border-radius:38px;border:2px solid #2E3A4F;background:var(--ground);overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.screen{position:absolute;inset:0;padding:22px 18px;display:flex;flex-direction:column;gap:14px;opacity:0;transition:opacity .45s}
+.story[data-step="0"] .screen[data-s="0"],.story[data-step="1"] .screen[data-s="1"],.story[data-step="2"] .screen[data-s="2"],.story[data-step="3"] .screen[data-s="3"]{opacity:1}
+.vf{flex:1;border-radius:22px;background:#0F141C;position:relative;display:grid;place-items:center}
+.vf .c{position:absolute;width:26px;height:26px;border-color:var(--lime);border-style:solid}
+.vf .c1{left:16px;top:16px;border-width:3px 0 0 3px;border-radius:8px 0 0 0}.vf .c2{right:16px;top:16px;border-width:3px 3px 0 0;border-radius:0 8px 0 0}
+.vf .c3{left:16px;bottom:16px;border-width:0 0 3px 3px;border-radius:0 0 0 8px}.vf .c4{right:16px;bottom:16px;border-width:0 3px 3px 0;border-radius:0 0 8px 0}
+.sweep{position:absolute;left:12%;right:12%;height:2px;background:var(--lime);top:20%;animation:sweep 2.2s ease-in-out infinite alternate}
+@keyframes sweep{to{top:80%}}
+.chip{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;padding:6px 10px;border-radius:999px;background:var(--raised);font-size:12px;color:var(--muted)}
+.chip b{width:7px;height:7px;border-radius:999px;background:var(--lime);display:inline-block}
+.match{border-radius:18px;border:2px solid var(--lime);background:var(--surface);padding:14px}
+.match .t{font-weight:700;font-size:16px;line-height:1.2}
+.match .code{font-family:var(--mono);color:var(--muted);font-size:13px}
+.soon{border-radius:14px;border:1px dashed #5A4516;background:#1A1608;color:var(--amber);font-size:13px;padding:10px 12px}
+.ptitle{font-weight:700;font-size:15px}
+
+/* Business */
+.biz{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:28px;overflow:hidden;margin-top:56px}
+.biz div{background:var(--ground);padding:30px 28px;min-height:190px}
+.biz h3{margin:16px 0 8px;font-size:20px;letter-spacing:-.01em}
+.biz p{margin:0;color:var(--muted);font-size:15px}
+.biz svg{width:28px;height:28px;color:var(--lime)}
+@media (max-width:900px){.biz{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.biz{grid-template-columns:1fr}}
+
+/* Hackathon proof */
+.proof{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:56px;align-items:start}
+.ledger{border:1px solid var(--line);border-radius:24px;overflow:hidden}
+.ledger .row{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding:20px 24px;border-top:1px solid var(--line)}
+.ledger .row:first-child{border-top:0}
+.ledger .what{font-weight:600}
+.ledger .what small{display:block;color:var(--muted);font-weight:400;font-size:14px}
+.ledger .num{font-family:var(--mono);font-size:20px;font-weight:700;white-space:nowrap}
+.ledger .num .ok{color:var(--lime)}
+.stack{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+.stack span{border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:14px;color:var(--text)}
+@media (max-width:900px){.proof{grid-template-columns:1fr}}
+
+/* CTA + footer */
+.cta{padding:140px 0;text-align:left}
+.cta h2{font-size:clamp(44px,7vw,96px);line-height:.95;letter-spacing:-.045em;margin:0 0 30px;max-width:11em}
+footer{border-top:1px solid var(--line);padding:36px 0 60px;color:var(--muted);font-size:14px}
+footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  .sweep{animation:none;top:50%}
+  .step,.tile,.screen,.readout,.pick-label{transition:none}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" aria-label="Main">
+  <a class="brand" href="#top">
+    <span class="brand-mark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A0D12" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg></span>
+    Goury Parts
+  </a>
+  <a class="link" href="#problem">Problem</a>
+  <a class="link" href="#identify">How it works</a>
+  <a class="link" href="#hackathon">Hackathon</a>
+  <a class="btn btn-lime" href="https://goury-parts.vercel.app/">Open the app</a>
+</nav>
+
+<main id="top">
+  <section class="wrap hero" aria-labelledby="hero-title">
+    <div>
+      <h1 id="hero-title"><span class="line">Know every part</span><span class="line thin">from one photo.</span></h1>
+      <p class="lead">Goury Parts runs our spare parts business. Point a phone at a worn part and Claude Vision finds it among 5,580 in the catalogue, with stock, price and rack. Billing, collections and suppliers run on the same app.</p>
+      <div class="ctas">
+        <a class="btn btn-lime" href="https://goury-parts.vercel.app/">Open the app</a>
+        <a class="btn btn-ghost" href="#identify">See how it identifies</a>
+      </div>
+    </div>
+    <div class="scanner" role="img" aria-label="A reel bush drawn as a point cloud, being scanned by a lime laser line until it is matched as part A17">
+      <canvas id="scan"></canvas>
+      <div class="readout dim" id="readout" aria-hidden="true">
+        <div class="k">Best match</div>
+        <div class="v">Reel bush 4 type dashmesh</div>
+        <div class="code">A17</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="story wrap" id="problem" data-story data-steps="4" data-step="0" aria-label="The problem">
+    <div class="stick">
+      <div>
+        <div class="dots" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <div class="steps">
+          <div class="step" data-i="0"><h3>Thousands of parts. Many look the same.</h3><p>Bushes, rivets and pins that differ by a few millimetres sit in the same racks. Telling them apart takes years at the counter.</p></div>
+          <div class="step" data-i="1"><h3>The knowledge lived in people's heads.</h3><p>What a part is, where it sits and what it costs was remembered, not written down. A new staff member had to ask every time.</p></div>
+          <div class="step" data-i="2"><h3>So we made the part findable.</h3><p>Every part gets a photo, a rack, a code and its dimensions, so the right one can be picked out of the crowd.</p></div>
+          <div class="step" data-i="3"><h3>One photo, one answer.</h3><p>The counter no longer depends on one person's memory. Anyone can identify the part and bill it.</p></div>
+        </div>
+      </div>
+      <div class="visual" aria-hidden="true">
+        <div class="wall" id="wall"></div>
+        <div class="pick-label">Found: Reel bush 4 type dashmesh <span class="code">A17</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="story wrap" id="groundwork" data-story data-steps="4" data-step="0" aria-label="The ground work">
+    <div class="stick">
+      <div>
+        <div class="dots" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <div class="steps">
+          <div class="step" data-i="0"><h3>The hard part was never the AI.</h3><p>For a model to recognise a part, there has to be a correct catalogue to match against. That catalogue did not exist.</p></div>
+          <div class="step" data-i="1"><h3>3,000 parts, recorded by hand.</h3><p>One at a time, on the warehouse floor. It was slow, and I enjoyed it so much I did not notice when the toughest part was behind me.</p></div>
+          <div class="step" data-i="2"><h3>Then it became a system.</h3><p>Staff record rack, photo, name and stock; the owner adds price and supplier. The catalogue now grows without one person doing every entry.</p></div>
+          <div class="step" data-i="3"><h3>5,580 parts today, still growing.</h3><p>And every part is now being measured, which is the data the next identification step needs.</p></div>
+        </div>
+      </div>
+      <div class="visual" aria-hidden="true">
+        <div class="counter">
+          <div class="n" id="count">0</div>
+          <div class="u" id="countLabel">parts recorded</div>
+          <div class="bar"><i id="countBar"></i></div>
+          <div class="marks"><span>0</span><span>3,000 by hand</span><span>5,580</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="story wrap" id="identify" data-story data-steps="4" data-step="0" aria-label="How identification works">
+    <div class="stick">
+      <div>
+        <div class="dots" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <div class="steps">
+          <div class="step" data-i="0"><h3>Take a photo of the part.</h3><p>Hold it flat, label side up. The phone does the rest; there is nothing to type.</p></div>
+          <div class="step" data-i="1"><h3>Claude Vision reads it.</h3><p>It looks at shape, finish and markings, and compares them with the photos and details in the catalogue.</p></div>
+          <div class="step" data-i="2"><h3>You get the match, ready to bill.</h3><p>Best match first with stock, price and rack, plus similar parts in case it is a near miss. One tap adds it to the bill.</p></div>
+          <div class="step" data-i="3"><h3>Next: dimensions settle it.</h3><p>A Roboflow model will add length and diameter matching, so near-identical parts are told apart for certain. It switches on once every part is measured.</p></div>
+        </div>
+      </div>
+      <div class="visual" aria-hidden="true">
+        <div class="phone">
+          <div class="screen" data-s="0"><div class="ptitle">Identify a part</div><div class="vf"><span class="c c1"></span><span class="c c2"></span><span class="c c3"></span><span class="c c4"></span><svg width="110" height="110" viewBox="0 0 100 100"><ellipse cx="50" cy="30" rx="30" ry="10" fill="none" stroke="#3A4659" stroke-width="2"/><path d="M20 30v40M80 30v40" stroke="#3A4659" stroke-width="2"/><ellipse cx="50" cy="70" rx="30" ry="10" fill="none" stroke="#3A4659" stroke-width="2"/><ellipse cx="50" cy="30" rx="13" ry="4.5" fill="none" stroke="#3A4659" stroke-width="2"/></svg></div></div>
+          <div class="screen" data-s="1"><div class="ptitle">Identify a part</div><div class="vf"><span class="c c1"></span><span class="c c2"></span><span class="c c3"></span><span class="c c4"></span><div class="sweep"></div><svg width="110" height="110" viewBox="0 0 100 100"><ellipse cx="50" cy="30" rx="30" ry="10" fill="none" stroke="#C6F432" stroke-width="2"/><path d="M20 30v40M80 30v40" stroke="#C6F432" stroke-width="2"/><ellipse cx="50" cy="70" rx="30" ry="10" fill="none" stroke="#C6F432" stroke-width="2"/><ellipse cx="50" cy="30" rx="13" ry="4.5" fill="none" stroke="#C6F432" stroke-width="2"/></svg></div><span class="chip"><b></b>Claude Vision is looking</span></div>
+          <div class="screen" data-s="2"><div class="ptitle">Best match</div><div class="match"><div class="t">Reel bush 4 type dashmesh</div><div class="code">A17</div></div><div class="match" style="border-color:var(--line)"><div class="t" style="font-size:14px">Ripit 1 inch</div><div class="code">A226 · similar</div></div><a class="btn btn-lime" style="margin-top:auto;min-height:44px" href="https://goury-parts.vercel.app/" tabindex="-1">Add to bill</a></div>
+          <div class="screen" data-s="3"><div class="ptitle">Best match</div><div class="match"><div class="t">Reel bush 4 type dashmesh</div><div class="code">A17</div></div><div class="soon">Dimension check with Roboflow switches on once every part is measured.</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section wrap" aria-labelledby="biz-title">
+    <h2 id="biz-title">It runs the whole business, not just the counter.</h2>
+    <p class="intro">Identification is the front door. Everything a spare parts business does every day sits behind it, on the same phone.</p>
+    <div class="biz">
+      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h4"></path></svg><h3>Billing</h3><p>Counter and wholesale bills with cash, UPI or credit.</p></div>
+      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8"></path></svg><h3>Stock and racks</h3><p>Live stock for 5,580 parts, with rack locations and low-stock alerts.</p></div>
+      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="13" rx="3"></rect><path d="M2 10h20M6 15h4"></path></svg><h3>Collections</h3><p>Who owes what, and a WhatsApp reminder in one tap.</p></div>
+      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.2a2 2 0 0 0 2-1.6L21 7H6"></path><circle cx="10" cy="21" r="1"></circle><circle cx="18" cy="21" r="1"></circle></svg><h3>Suppliers and orders</h3><p>Purchase orders, deliveries back into stock, and what is due to pay.</p></div>
+      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 20h.01M2 9a15 15 0 0 1 20 0"></path></svg><h3>Works offline</h3><p>Sales save on the phone and sync the moment the connection returns.</p></div>
+      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"></circle><path d="M2 21c0-4 3-6 7-6s7 2 7 6M17 11l2 2 4-4"></path></svg><h3>Staff and roles</h3><p>Every person logs in with their own PIN; admin, staff and accounts see what they need.</p></div>
+    </div>
+  </section>
+
+  <section class="section wrap" id="hackathon" aria-labelledby="hack-title">
+    <div class="proof">
+      <div>
+        <h2 id="hack-title">Taken to production at the AI hackathon.</h2>
+        <p class="intro">In one sprint, a single 1.4 MB HTML file became a real deployment, and the live database moved from Firebase to Convex without stopping the business. Every record was checked before the switch.</p>
+        <div class="stack"><span>Claude</span><span>Claude Vision</span><span>Convex</span><span>Vercel</span><span>GitHub</span><span>Roboflow, next</span></div>
+      </div>
+      <div class="ledger" id="ledger">
+        <div class="row"><div class="what">Shop data documents<small>Settings, staff, customers, sales, orders</small></div><div class="num"><span class="ok" data-to="60">0</span> / 60</div></div>
+        <div class="row"><div class="what">Parts<small>Compared field by field</small></div><div class="num"><span class="ok" data-to="5580">0</span> / 5,580</div></div>
+        <div class="row"><div class="what">Per-record history<small>Including deleted records</small></div><div class="num"><span class="ok" data-to="2094">0</span> / 2,094</div></div>
+        <div class="row"><div class="what">AI key on staff phones<small>Moved into a server function</small></div><div class="num">0</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta wrap" aria-labelledby="cta-title">
+    <h2 id="cta-title">The counter, in your pocket.</h2>
+    <a class="btn btn-lime" href="https://goury-parts.vercel.app/">Open Goury Parts</a>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap"><span>Goury Parts, a system for running a spare parts business.</span><span>Built with Claude, Convex and Vercel.</span></div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var LIME = [198, 244, 50];
+
+  /* ---------- Hero: point-cloud reel bush with a scanning laser ---------- */
+  var cv = document.getElementById('scan'), ctx = cv.getContext('2d');
+  var readout = document.getElementById('readout');
+  var pts = [];
+  (function build() {
+    function ring(r, y, n) { for (var i = 0; i < n; i++) { var a = i / n * Math.PI * 2; pts.push([Math.cos(a) * r, y, Math.sin(a) * r]); } }
+    var R = 1, Ri = 0.52, H = 1.1, F = 1.42, FH = 0.16;
+    for (var y = -H / 2; y <= H / 2 + 1e-6; y += H / 14) { ring(R, y, 90); ring(Ri, y, 50); }      // outer and inner walls
+    for (var y2 = H / 2; y2 <= H / 2 + FH + 1e-6; y2 += FH / 3) ring(F, y2, 120);                  // flange rim
+    for (var r = Ri; r <= F; r += 0.09) ring(r, H / 2 + FH, Math.round(70 * r));                    // flange top face
+    for (var r2 = Ri; r2 <= R; r2 += 0.09) ring(r2, -H / 2, Math.round(60 * r2));                   // bottom face
+  })();
+  var W = 0, Hh = 0, dpr = 1;
+  function size() { dpr = Math.min(window.devicePixelRatio || 1, 2); var b = cv.getBoundingClientRect(); W = b.width; Hh = b.height; cv.width = W * dpr; cv.height = Hh * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  size(); window.addEventListener('resize', size);
+  var t0 = performance.now(), visible = true;
+  new IntersectionObserver(function (e) { visible = e[0].isIntersecting; }, { threshold: 0 }).observe(cv);
+  function frame(now) {
+    var t = reduce ? 4.2 : (now - t0) / 1000;
+    ctx.clearRect(0, 0, W, Hh);
+    var ay = t * 0.35, ax = -0.32, s = Math.min(W, Hh) * 0.25, cx = W / 2, cy = Hh * 0.52;
+    var cyc = (t % 6) / 6;                       // one scan every 6 s
+    var scanY = 1.0 - cyc * 2.2;                 // laser moves top to bottom in model space
+    var done = cyc > 0.82;
+    readout.classList.toggle('dim', !done && !reduce);
+    var cA = Math.cos(ay), sA = Math.sin(ay), cX = Math.cos(ax), sX = Math.sin(ax);
+    for (var i = 0; i < pts.length; i++) {
+      var p = pts[i];
+      var x = p[0] * cA - p[2] * sA, z = p[0] * sA + p[2] * cA, y = p[1] - 0.05;
+      var y2 = y * cX - z * sX, z2 = y * sX + z * cX;
+      var k = 3.2 / (3.2 + z2), px = cx + x * s * k, py = cy - y2 * s * k;
+      var near = Math.abs(p[1] - scanY) < 0.09, passed = p[1] > scanY;
+      var depth = 0.35 + 0.65 * (1 - (z2 + 1.6) / 3.2);
+      var r = (near ? 2.1 : 1.3) * k;
+      if (near) ctx.fillStyle = 'rgba(' + LIME + ',1)';
+      else if (passed || done) ctx.fillStyle = 'rgba(' + LIME + ',' + (0.25 + 0.55 * depth).toFixed(2) + ')';
+      else ctx.fillStyle = 'rgba(147,160,180,' + (0.18 + 0.45 * depth).toFixed(2) + ')';
+      ctx.fillRect(px - r / 2, py - r / 2, r, r);
+    }
+    if (!done) {                                  // the laser line itself
+      var ly = cy - (scanY - 0.05) * cX * s;
+      ctx.strokeStyle = 'rgba(' + LIME + ',.55)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(W * 0.1, ly); ctx.lineTo(W * 0.9, ly); ctx.stroke();
+    }
+    if (!reduce) requestAnimationFrame(function loop(n) { if (visible) frame(n); else requestAnimationFrame(loop); });
+  }
+  requestAnimationFrame(frame);
+
+  /* ---------- Story 1: wall of near-identical bushes ---------- */
+  var wall = document.getElementById('wall');
+  for (var i = 0; i < 48; i++) {
+    var d = document.createElement('div'); d.className = 'tile' + (i === 27 ? ' pick' : '');
+    var rr = 26 + ((i * 7) % 9), ri = 10 + ((i * 5) % 6);
+    d.innerHTML = '<svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="' + rr + '" fill="none" stroke="' + (i === 27 ? '#0A0D12' : '#3A4659') + '" stroke-width="3"/><circle cx="40" cy="40" r="' + ri + '" fill="none" stroke="' + (i === 27 ? '#0A0D12' : '#3A4659') + '" stroke-width="3"/></svg>';
+    wall.appendChild(d);
+  }
+
+  /* ---------- Scroll stories: progress drives the step ---------- */
+  var stories = [].slice.call(document.querySelectorAll('[data-story]'));
+  var countEl = document.getElementById('count'), barEl = document.getElementById('countBar'), labelEl = document.getElementById('countLabel');
+  function fmt(n) { return Math.round(n).toLocaleString('en-IN'); }
+  function onScroll() {
+    var vh = window.innerHeight;
+    stories.forEach(function (s) {
+      var r = s.getBoundingClientRect(), span = r.height - vh;
+      var p = span > 0 ? Math.min(1, Math.max(0, -r.top / span)) : 1;
+      var n = +s.dataset.steps, step = Math.min(n - 1, Math.floor(p * n));
+      if (s.dataset.step !== String(step)) s.dataset.step = step;
+      if (s.id === 'groundwork') {
+        var v = p < 0.5 ? (p / 0.5) * 3000 : 3000 + ((p - 0.5) / 0.5) * 2580;
+        countEl.textContent = fmt(v); barEl.style.width = (v / 5580 * 100).toFixed(1) + '%';
+        labelEl.textContent = p < 0.5 ? 'parts recorded by hand' : 'parts in the catalogue';
+      }
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  /* ---------- Hackathon ledger: count up once when it comes into view ---------- */
+  var ledger = document.getElementById('ledger'), counted = false;
+  new IntersectionObserver(function (e) {
+    if (!e[0].isIntersecting || counted) return; counted = true;
+    [].forEach.call(ledger.querySelectorAll('[data-to]'), function (el) {
+      var to = +el.dataset.to, start = performance.now(), dur = reduce ? 0 : 1400;
+      (function tick(now) { var k = dur ? Math.min(1, (now - start) / dur) : 1; k = 1 - Math.pow(1 - k, 3); el.textContent = fmt(to * k); if (k < 1) requestAnimationFrame(tick); })(start);
+    });
+  }, { threshold: 0.4 }).observe(ledger);
+})();
+</script>
+</body>
+</html>
