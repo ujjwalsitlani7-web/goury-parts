@@ -1,0 +1,2320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- CSP: blocks any injected external script tag not from self/jsdelivr/gstatic, blocks plugins,
+     locks base URI and form targets. 'unsafe-inline' is required by the app's inline handlers —
+     inline-injection defense remains escapeHtml() at render boundaries. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; font-src 'self' data:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f766e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Goury Parts">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<title>Goury Parts</title>
+<link rel="stylesheet" href="/css/main.css">
+</head>
+<!-- ===== LOGIN SCREEN ===== -->
+
+<body>
+
+<div id="sync-indicator" class="hidden"></div>
+<div id="rx-status" onclick="rxOpenDataPanel()" title="Tap for data health details" style="position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:10000;font-size:12px;padding:5px 12px;border-radius:14px;font-weight:700;color:white;background:#475569;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);min-width:120px;text-align:center;">⏳ Starting…</div>
+
+<div id="login-screen" class="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="icon">🔧</span>
+      <h1 id="login-shop-title">Shop AI</h1>
+      <small>Spare Parts Management</small>
+    </div>
+
+    <!-- FIRST TIME SETUP (shown when no users exist) -->
+    <div id="setup-panel" style="display:none;">
+      <p style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px;">Welcome! Set up your shop to get started.</p>
+      <div class="field"><label>Shop Name</label><input class="input" id="setup-shop" placeholder="My Spare Parts Shop"></div>
+      <div class="field"><label>Your Name (Admin/Owner)</label><input class="input" id="setup-admin-name" placeholder="e.g. Rajesh Kumar"></div>
+      <div class="field"><label>Create 4-digit PIN</label><input type="password" class="input" id="setup-pin" maxlength="4" inputmode="numeric" placeholder="e.g. 1234"></div>
+      <div class="field"><label>Confirm PIN</label><input type="password" class="input" id="setup-pin2" maxlength="4" inputmode="numeric" placeholder="Repeat PIN"></div>
+      <div style="background:#f0fdf4;border-radius:10px;padding:12px;margin-bottom:10px;">
+        <div style="font-size:12px;font-weight:600;color:#166534;margin-bottom:8px;">🔒 Security Questions (for PIN recovery)</div>
+        <div class="field">
+          <label>Question 1</label>
+          <select class="select" id="setup-sq1">
+            <option value="">— choose a question —</option>
+            <option>What is your mother's maiden name?</option>
+            <option>What was the name of your first school?</option>
+            <option>What is your childhood nickname?</option>
+            <option>What is the name of your hometown?</option>
+            <option>What was the name of your first pet?</option>
+            <option>What is your father's middle name?</option>
+          </select>
+          <input class="input" id="setup-sa1" placeholder="Your answer" style="margin-top:6px;">
+        </div>
+        <div class="field">
+          <label>Question 2</label>
+          <select class="select" id="setup-sq2">
+            <option value="">— choose a question —</option>
+            <option>What was the model of your first vehicle?</option>
+            <option>What is your oldest sibling's name?</option>
+            <option>In which city were you born?</option>
+            <option>What is your lucky number?</option>
+            <option>What was your first mobile number?</option>
+            <option>What is your shop's street name?</option>
+          </select>
+          <input class="input" id="setup-sa2" placeholder="Your answer" style="margin-top:6px;">
+        </div>
+      </div>
+      <button class="btn" onclick="createFirstAdmin()">✓ Create Shop & Login</button>
+      <div id="setup-error" style="color:#dc2626;font-size:13px;margin-top:8px;"></div>
+    </div>
+
+    <!-- NORMAL LOGIN (shown when users exist) -->
+    <div id="login-panel" style="display:none;">
+      <div class="field">
+        <label>Your Name</label>
+        <input class="input" id="login-staff-input" list="login-staff-list"
+          placeholder="Type or select your name…" autocomplete="off"
+          oninput="loginInputChanged()">
+        <datalist id="login-staff-list"></datalist>
+        <!-- Hidden select used internally for userId resolution -->
+        <select id="login-staff-select" style="display:none;"></select>
+      </div>
+      <div class="field">
+        <label>Enter PIN (4 digits)</label>
+        <input type="password" class="input" id="login-pin" maxlength="4" inputmode="numeric" placeholder="••••" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn" onclick="doLogin()">Login →</button>
+      <div id="login-error" style="color:#dc2626;font-size:13px;margin-top:8px;"></div>
+      <div class="mt-2 center">
+        <small style="color:var(--muted);">
+          <a href="#" onclick="showForgotPin();return false;">Forgot PIN?</a>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="switchToSetup();return false;">+ Add new staff</a>
+        </small>
+      </div>
+    </div>
+
+    <!-- FORGOT PIN (security questions) -->
+    <div id="forgot-panel" style="display:none;">
+      <div style="background:#fef9c3;border-radius:10px;padding:12px;margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:600;color:#854d0e;">🔒 Verify Identity</div>
+        <div style="font-size:12px;color:#78350f;margin-top:4px;">Answer your security questions to reset PIN.</div>
+      </div>
+      <div class="field">
+        <label>Select Your Name</label>
+        <select class="select" id="forgot-staff-select" onchange="loadSecurityQuestions()">
+          <option value="">— select —</option>
+        </select>
+      </div>
+      <div id="sq-fields"></div>
+      <button class="btn btn-warn" onclick="verifySQ()">Verify & Reset PIN</button>
+      <div id="forgot-error" style="color:#dc2626;font-size:13px;margin-top:8px;"></div>
+      <div class="mt-2 center"><small><a href="#" onclick="backToLogin();return false;">← Back to Login</a></small></div>
+    </div>
+
+    <!-- RESET PIN (after SQ verified) -->
+    <div id="reset-panel" style="display:none;">
+      <div style="background:#dcfce7;border-radius:10px;padding:12px;margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:600;color:#166534;">✅ Identity Verified!</div>
+        <div style="font-size:12px;color:#15803d;margin-top:4px;">Set a new PIN below.</div>
+      </div>
+      <div class="field"><label>New PIN (4 digits)</label><input type="password" class="input" id="reset-pin" maxlength="4" inputmode="numeric" placeholder="New PIN"></div>
+      <div class="field"><label>Confirm New PIN</label><input type="password" class="input" id="reset-pin2" maxlength="4" inputmode="numeric" placeholder="Repeat PIN"></div>
+      <button class="btn btn-success" onclick="doResetPin()">✓ Save New PIN</button>
+      <div id="reset-error" style="color:#dc2626;font-size:13px;margin-top:8px;"></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="header">
+  <div>
+    <h1 id="hdr-title">Shop AI</h1>
+    <div class="sub" id="hdr-sub">Spare Parts Automation</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <button onclick="gpOpenNotes()" title="Notes for owner" style="position:relative;background:rgba(255,255,255,.15);border:none;color:white;padding:4px 9px;border-radius:16px;font-size:13px;cursor:pointer;">📝<span id="gp-notes-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;border-radius:8px;padding:0 5px;line-height:16px;"></span></button>
+    <button onclick="gpOpenAIHelp()" title="AI Help" style="background:rgba(255,255,255,.15);border:none;color:white;padding:4px 9px;border-radius:16px;font-size:12px;font-weight:700;cursor:pointer;">🤖 Help</button>
+    <button id="lang-toggle-btn" onclick="toggleLanguage()" style="background:rgba(255,255,255,.15);border:none;color:white;padding:4px 10px;border-radius:16px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px;">हिं</button>
+    <button class="gear" onclick="openHeaderMenu()">⚙</button>
+  </div>
+</div>
+<div id="current-user-bar" style="display:none;background:#115e59;color:white;padding:4px 16px;font-size:12px;display:flex;justify-content:space-between;align-items:center;">
+  <span id="cur-user-label">👤 —</span>
+  <button onclick="doLogout()" style="background:rgba(255,255,255,.2);border:none;color:white;padding:2px 10px;border-radius:6px;font-size:11px;cursor:pointer;">Logout</button>
+</div>
+
+<!-- ============ HOME / DASHBOARD ============ -->
+<div id="tab-home" class="tab-content active">
+  <div class="container">
+    <div class="card priority" id="briefing-card">
+      <h2 data-i18n="action_plan">☀️ Today's Action Plan</h2>
+      <small id="briefing-summary"></small>
+      <div id="briefing-list" class="mt-2"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="num" id="s-today">₹0</div><div class="label" data-i18n="today_sale">Today's Sale</div></div>
+      <div class="stat"><div class="num" id="s-month">₹0</div><div class="label" data-i18n="this_month">This Month</div></div>
+      <div class="stat success" id="stat-profit-card" style="display:none;"><div class="num" id="s-profit">₹0</div><div class="label">Month Profit</div></div>
+      <div class="stat warn"><div class="num" id="s-due">₹0</div><div class="label" data-i18n="credit_due">Credit Due</div></div>
+      <div class="stat warn"><div class="num" id="s-low">0</div><div class="label" data-i18n="low_stock">Low Stock</div></div>
+      <div class="stat danger"><div class="num" id="s-out">0</div><div class="label" data-i18n="out_of_stock">Out of Stock</div></div>
+      <div class="stat" style="background:#fef3c7;border-color:#fbbf24;cursor:pointer;" onclick="goTab('demand');renderDemandInbox()"><div class="num" id="s-demand" style="color:#92400e;">0</div><div class="label" style="color:#92400e;">📡 Demand</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Quick Actions</h2>
+      <div class="row2">
+        <button class="btn" onclick="goTab('sale')">🧾 New Sale</button>
+        <button class="btn btn-outline" onclick="goTab('wholesale')">🏭 Wholesale</button>
+      </div>
+      <div class="row2 mt-1">
+        <button class="btn btn-outline" onclick="goTab('inventory')">📦 Stock</button>
+        <button class="btn btn-outline" onclick="openAddPart()">+ Add Part</button>
+      </div>
+      <div class="row2 mt-1">
+        <button class="btn btn-outline" onclick="openRackFinder()">📍 Rack Finder</button>
+        <button class="btn btn-outline" onclick="goTab('import')">⚡ Bulk Import</button>
+      </div>
+      <div class="row2 mt-1">
+        <button class="btn btn-outline" onclick="goTab('staff')">👥 Staff & Pay</button>
+        <button class="btn btn-outline" onclick="goTab('reports');showReport('growth')">📈 Growth</button>
+      </div>
+      <div class="row2 mt-1">
+        <button class="wa-btn" onclick="goTab('whatsapp'); showWASection('broadcast')">📢 Broadcast</button>
+        <button class="wa-btn" onclick="goTab('whatsapp'); showWASection('supplier')">📦 Order Stock</button>
+      </div>
+      <button class="btn btn-ai mt-1" onclick="goTab('brain')">🧠 Open AI Brain</button>
+    </div>
+
+    <div class="card">
+      <h2>Recent Sales</h2>
+      <div id="recent-sales"></div>
+    </div>
+
+    <div id="home-recent-parts-card" class="card" style="display:none;border-left:4px solid #0f766e;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h2 style="margin:0;">🆕 Recently Added <span id="home-recent-parts-count" style="background:#0f766e;color:white;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle;"></span></h2>
+        <span style="font-size:11px;color:var(--muted);margin-left:4px;">Today &amp; Yesterday</span>
+        <button class="btn btn-sm btn-outline" onclick="openPartsDateReview()" style="width:auto;font-size:12px;">📅 By Date →</button>
+      </div>
+      <!-- Add Velocity Panel -->
+      <div id="home-add-velocity" style="display:none;margin-bottom:12px;background:linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 100%);border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="font-size:12px;font-weight:700;color:#065f46;letter-spacing:0.3px;">⚡ Add Velocity · Today</div>
+          <div id="home-velocity-total" style="font-size:13px;font-weight:800;color:#0f766e;"></div>
+        </div>
+        <div id="home-velocity-bars" style="display:flex;flex-direction:column;gap:4px;"></div>
+      </div>
+      <div id="home-recent-parts-list"></div>
+    </div>
+
+    <div class="card" style="border-left:4px solid var(--success);">
+      <div class="flex-between" style="margin-bottom:8px;">
+        <h2 style="margin:0;">💰 Collections Today</h2>
+        <button class="btn btn-sm btn-outline" onclick="goTab('collections')" style="width:auto;">View All</button>
+      </div>
+      <div id="home-collections-summary"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ INVENTORY ============ -->
+<div id="tab-inventory" class="tab-content">
+  <div class="container">
+    <div class="search-wrap">
+      <div class="search-row">
+        <input type="text" class="search" id="inv-search" placeholder="Search part no, name, brand…" oninput="invSearchDebounced()">
+        <button class="voice-btn" onclick="voiceSearch('inv-search')">🎤</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 2px 0;">
+        <span id="inv-count" style="font-size:12px;color:var(--muted);"></span>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-sm btn-outline" style="width:auto;padding:5px 10px;font-size:12px;" onclick="openPartsDateReview()">📅 By Date</button>
+          <button class="btn btn-sm btn-outline" style="width:auto;padding:5px 10px;font-size:12px;" onclick="openBulkCategoryFix()">🔧 Fix Category</button>
+          <button class="btn btn-sm btn-outline" style="width:auto;padding:5px 10px;font-size:12px;" onclick="openAddPart()">+ Add Part</button>
+        </div>
+      </div>
+    </div>
+    <div class="chips" id="inv-chips"></div>
+    <div id="inv-list"></div>
+  </div>
+  <button class="fab" onclick="openAddPart()">+</button>
+</div>
+
+<!-- ============ CATALOGUE REGISTRATION ============ -->
+<div id="tab-catalogue" class="tab-content">
+  <!-- sticky header -->
+  <div class="cat-hdr">
+    <button class="cat-hdr-back" onclick="goTab('inventory')" title="Back to inventory">←</button>
+    <h2>📋 Catalogue</h2>
+    <span class="cat-pct-badge" id="cat-pct-badge">0%</span>
+  </div>
+  <div class="container" style="max-width:720px;margin:0 auto;padding:14px;">
+
+    <!-- progress banner — always visible -->
+    <div class="cat-prog-banner">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:13px;font-weight:600;">Catalogue completion</span>
+        <span id="cat-prog-label" style="font-size:12px;color:var(--muted);">0 / 0 SKUs</span>
+      </div>
+      <div class="cat-prog-bar-outer"><div class="cat-prog-bar-fill" id="cat-prog-bar" style="width:0%;"></div></div>
+      <div class="cat-pstats">
+        <div class="cat-pstat ok"><div class="cpn" id="cat-n-complete">0</div><div class="cpl">Complete</div></div>
+        <div class="cat-pstat dad"><div class="cpn" id="cat-n-dad">0</div><div class="cpl">Need pricing</div></div>
+        <div class="cat-pstat stf"><div class="cpn" id="cat-n-staff">0</div><div class="cpl">Need location</div></div>
+      </div>
+    </div>
+
+    <!-- role gate message — shown to staff when trying to access pricing mode -->
+    <div class="cat-role-gate" id="cat-role-gate" style="display:none;">
+      🔒 Pricing &amp; supplier info is filled in by the owner. Your job is to scan parts, take photos and enter stock counts.
+    </div>
+
+    <!-- mode switcher — staff only sees their mode; admin/manager see both -->
+    <div class="cat-mode-grid" id="cat-mode-grid">
+      <div class="cat-mode-btn active" id="cat-mode-staff-btn" onclick="catSwitchMode('staff')">
+        <div class="cmicon">📱</div>
+        <div class="cmtitle">Rack entry</div>
+        <div class="cmsub">Scan · photo · stock</div>
+      </div>
+      <div class="cat-mode-btn" id="cat-mode-dad-btn" onclick="catSwitchMode('dad')">
+        <div class="cmicon">💰</div>
+        <div class="cmtitle">Pricing queue</div>
+        <div class="cmsub" id="cat-mode-dad-count">0 pending</div>
+      </div>
+    </div>
+
+    <!-- ══ STAFF STREAM ══ -->
+    <div id="cat-staff-panel">
+      <div class="cat-rack-bar">
+        <div class="cat-rack-badge" id="cat-rack-badge">—</div>
+        <div class="cat-rack-lbl" id="cat-rack-lbl">Tap to select a rack first</div>
+        <button class="cat-rack-change" onclick="catSelectRack()">Change rack</button>
+      </div>
+      <div class="cat-session-strip">
+        <span>Session: <b id="cat-session-count">0</b> parts entered</span>
+        <small>Auto-tagged to rack</small>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span style="font-size:14px;font-weight:700;">Add part to rack</span>
+          <span style="font-size:11px;color:var(--muted);">* required</span>
+        </div>
+        <!-- Photo -->
+        <div class="cat-photo-area" id="cat-photo-area">
+          <div id="cat-photo-inner">
+            <div style="font-size:30px;">📷</div>
+            <div style="font-size:12px;color:var(--muted);margin:6px 0 10px;line-height:1.5;">Photo helps the WhatsApp bot identify this part<br>from customer pictures</div>
+            <div class="cat-photo-btns">
+              <label class="btn btn-sm" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
+                📸 Camera
+                <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="catHandlePhoto(this)">
+              </label>
+              <label class="btn btn-outline btn-sm" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
+                🖼 Gallery
+                <input type="file" accept="image/*" style="display:none;" onchange="catHandlePhoto(this)">
+              </label>
+            </div>
+          </div>
+        </div>
+        <!-- Identity -->
+        <div class="uap-section" style="margin-top:0;">
+          <div class="uap-section-title">Part identity</div>
+          <div class="row2">
+            <div class="field"><label>Part number *</label>
+              <input class="input" id="cat-partno" placeholder="e.g. BRG-6205" style="text-transform:uppercase;" autocomplete="off" oninput="this.value=this.value.toUpperCase();if(typeof catCheckPartNoDuplicate==='function')catCheckPartNoDuplicate()"></div>
+            <div class="field"><label>Brand</label>
+              <input class="input" id="cat-brand" placeholder="SKF, Mahindra…" list="cat-brand-list" oninput="catLiveValidate('cat-brand','brand')">
+              <datalist id="cat-brand-list"></datalist></div>
+          </div>
+          <div class="field"><label>Part name *</label>
+            <input class="input" id="cat-name" placeholder="e.g. Ball Bearing 6205 ZZ" oninput="catLiveValidateName()" autocomplete="off" list="cat-name-list">
+              <datalist id="cat-name-list"></datalist></div>
+          <div class="row2">
+            <div class="field"><label>Machine type</label>
+              <select class="select" id="cat-machine">
+                <option value="tractor">🚜 Tractor</option>
+                <option value="harvester">🌾 Harvester</option>
+                <option value="jcb">🏗️ JCB</option>
+                <option value="rotavator">⚙️ Rotavator</option>
+                <option value="other">🔧 Other</option>
+              </select></div>
+            <div class="field"><label>Category</label>
+              <input class="input" id="cat-category" placeholder="Bearing, Filter…" list="cat-cat-list" oninput="catLiveValidate('cat-category','category')">
+              <datalist id="cat-cat-list"></datalist></div>
+              <datalist id="global-supplier-list"></datalist>
+          </div>
+          <div class="field"><label>Compatible models <span style="font-size:11px;color:var(--muted);">(optional)</span></label>
+            <input class="input" id="cat-models" placeholder="e.g. Mahindra 575, Sonalika 750"></div>
+        </div>
+        <!-- Unit type -->
+        <div class="uap-section">
+          <div class="uap-section-title">Unit type</div>
+          <div class="uap-unit-pills" id="cat-unit-pills">
+            <div class="uap-unit-pill sel" onclick="catSelectUnit('pcs',this)">🔩 Pieces <span class="pill-unit">(pcs)</span></div>
+            <div class="uap-unit-pill" onclick="catSelectUnit('set',this)">📦 Set <span class="pill-unit">(set)</span></div>
+            <div class="uap-unit-pill" onclick="catSelectUnit('box',this)">🗃️ Box <span class="pill-unit">(box)</span></div>
+            <div class="uap-unit-pill" onclick="catSelectUnit('pair',this)">🔗 Pair <span class="pill-unit">(pair)</span></div>
+            <div class="uap-unit-pill" onclick="catSelectUnit('kg',this)">⚖️ KG <span class="pill-unit">(kg)</span></div>
+            <div class="uap-unit-pill" onclick="catSelectUnit('ltr',this)">🫙 Litre <span class="pill-unit">(ltr)</span></div>
+            <div class="uap-unit-pill" onclick="catSelectUnit('mtr',this)">📏 Metre <span class="pill-unit">(mtr)</span></div>
+          </div>
+          <input type="hidden" id="cat-unit" value="pcs">
+        </div>
+        <!-- Stock & location -->
+        <div class="uap-section">
+          <div class="uap-section-title">Stock &amp; location</div>
+          <div class="row2">
+            <div class="field"><label>Current stock *</label>
+              <input type="number" class="input" id="cat-stock" placeholder="0" min="0"></div>
+            <div class="field"><label>Min stock (reorder)</label>
+              <input type="number" class="input" id="cat-minstock" placeholder="0" min="0"></div>
+          </div>
+          <div class="field"><label>Rack / location <span id="cat-loc-hint" style="font-size:10px;color:var(--primary);font-weight:600;"></span></label>
+            <input class="input" id="cat-loc" placeholder="e.g. A-7" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()"></div>
+        </div>
+        <!-- MRP / List price — staff can enter this -->
+        <div class="uap-section">
+          <div class="uap-section-title">List price (MRP)</div>
+          <div class="field">
+            <label>🏷️ MRP / List ₹ <small style="font-weight:400;color:var(--muted);">(printed on box — enter if visible)</small></label>
+            <div class="cat-price-wrap"><span class="crs">₹</span>
+              <input type="number" class="input" id="cat-mrp" placeholder="0" min="0" onkeydown="if(event.key==='Enter')document.getElementById('cat-stock').focus()">
+            </div>
+          </div>
+          <div class="uap-section-title" style="margin-top:10px;">Rates — H / C / R <span style="font-size:11px;font-weight:400;color:var(--muted);">(optional — fill if you know)</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+            <div class="field" style="margin-bottom:0;"><label>H · Wholesale ₹</label>
+              <div class="cat-price-wrap"><span class="crs">₹</span><input type="number" class="input" id="cat-rate-h" placeholder="0" min="0"></div></div>
+            <div class="field" style="margin-bottom:0;"><label>C · Cost ₹</label>
+              <div class="cat-price-wrap"><span class="crs">₹</span><input type="number" class="input" id="cat-rate-c" placeholder="0" min="0"></div></div>
+            <div class="field" style="margin-bottom:0;"><label>R · Retail ₹</label>
+              <div class="cat-price-wrap"><span class="crs">₹</span><input type="number" class="input" id="cat-rate-r" placeholder="0" min="0"></div></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">💡 C + R both filled → part is ready to sell right away. Otherwise it goes to the owner's pricing queue.</div>
+        </div>
+        <!-- Supplier — optional, staff can fill if they know it -->
+        <div class="uap-section">
+          <div class="uap-section-title">Supplier <span style="font-size:11px;font-weight:400;color:var(--muted);">(optional — helps owner order stock)</span></div>
+          <div class="row2">
+            <div class="field"><label>Supplier Name</label>
+              <input class="input" id="cat-sup-name" placeholder="e.g. Singh Auto Parts"
+                list="global-supplier-list"
+                oninput="supAutofill('cat-sup-name','cat-sup-phone')"
+                autocomplete="off"></div>
+            <div class="field"><label>Supplier Phone</label>
+              <input class="input" id="cat-sup-phone" placeholder="9876543210" type="tel"></div>
+          </div>
+        </div>
+        <input type="hidden" id="cat-photo-data" value="">
+        <button class="uap-save-btn" onclick="catSaveDraft()">💾 Save draft — pricing queued for owner</button>
+        <button class="cat-save-next" onclick="catSaveDraft(true)">+ Save &amp; enter next part →</button>
+      </div>
+    </div>
+
+    <!-- ══ MISSING LOCATION RECOVERY ══ -->
+    <div id="cat-missing-loc-panel" style="margin-top:14px;display:none;">
+      <div class="card" style="border:1.5px solid #f59e0b;background:#fffbeb;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:14px;font-weight:700;color:#92400e;">📍 Parts missing rack location</div>
+          <span id="cat-missing-loc-count" style="background:#f59e0b;color:white;font-size:12px;font-weight:700;padding:3px 10px;border-radius:8px;">0</span>
+        </div>
+        <div style="font-size:12px;color:#78350f;margin-bottom:10px;">These parts were entered without a rack. Tap a part to assign its location quickly.</div>
+        <div id="cat-missing-loc-list"></div>
+      </div>
+    </div>
+
+    <!-- ══ DAD/OWNER PRICING QUEUE ══ -->
+    <div id="cat-dad-panel" style="display:none;">
+      <div class="cat-queue-hdr">
+        <span style="font-size:14px;font-weight:700;">Needs your pricing</span>
+        <span class="cat-q-badge" id="cat-dad-badge">0 items</span>
+        <span style="flex:1;"></span>
+        <button id="cat-bm-autoapprove-btn" class="btn btn-sm" onclick="catBmAutoApprove()" style="display:none;width:auto;padding:5px 10px;font-size:12px;background:#0f766e;white-space:nowrap;">🏷️ Auto-price matched</button>
+        <button class="btn btn-sm btn-outline" style="width:auto;padding:5px 10px;font-size:12px;" onclick="openBulkRateCard()">📋 Bulk Fill</button>
+        <select class="select" id="cat-dad-filter" style="width:auto;padding:6px 10px;font-size:13px;" onchange="catRenderDadQueue()">
+          <option value="all">All pending</option>
+          <option value="noPhoto">No photo yet</option>
+          <option value="noSupplier">No supplier</option>
+        </select>
+      </div>
+      <div id="cat-bm-match-banner" style="display:none;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;border-radius:10px;padding:10px 14px;margin-bottom:10px;">
+        <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:3px;" id="cat-bm-banner-title"></div>
+        <div style="font-size:12px;color:#15803d;" id="cat-bm-banner-body"></div>
+      </div>
+      <div id="cat-dad-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ COUNTER SALE ============ -->
+<div id="tab-sale" class="tab-content">
+  <div class="container">
+
+    <!-- STEP 1: Customer + Search -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+        <h2 data-i18n="sale_heading" style="margin:0;">🧾 New Counter Sale</h2>
+        <button class="btn btn-sm btn-outline" style="width:auto;" onclick="gpOpenBillSearch()">🔎 Find Bill</button>
+      </div>
+      <div class="field mt-1">
+        <label data-i18n="sale_customer_label">Customer <small style="font-weight:400;">(select for credit pricing)</small></label>
+        <div class="gp-party-search" data-for="sale-customer"></div>
+        <select class="select" id="sale-customer" onchange="renderCart();toggleRetailField();gpPartyInfo('sale-customer')">
+          <option value="" data-i18n="sale_walkin">Walk-in Customer (Instant Price)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label data-i18n="sale_search_label">Search & Add Parts</label>
+        <div class="search-row">
+          <input type="text" class="search" id="sale-search" placeholder="Part no, name, brand…" oninput="renderSaleSearch()">
+          <button class="voice-btn" onclick="voiceSale()">🎤</button>
+          <button class="photo-btn" id="photo-grid-btn" onclick="openPhotoGrid()" title="Scan barcode, AI photo match, or browse parts">📷</button>
+        </div>
+      </div>
+      <div id="sale-search-results"></div>
+      <button class="btn btn-sm btn-outline mt-1" onclick="gpOpenNewPart('sale')">➕ New Part (not in stock list) — save with H/C/R rate</button>
+    </div>
+
+    <!-- STEP 2: Cart -->
+    <div class="card">
+      <h2><span data-i18n="sale_cart">🛒 Cart</span> <span id="cart-count" style="font-weight:400;color:var(--muted);font-size:13px;"></span></h2>
+      <div id="cart-items"></div>
+      <div id="cart-empty" class="empty"><div class="icon">🛒</div><span data-i18n="sale_cart_empty">Add parts above to start a sale</span></div>
+      <div id="cross-sell-box"></div>
+      <div id="cart-totals" style="display:none;">
+        <div class="divider"></div>
+        <div class="flex-between"><span data-i18n="sale_subtotal">Subtotal</span><span id="cart-subtotal">₹0</span></div>
+        <div class="field mt-1">
+          <label data-i18n="sale_discount">Discount ₹</label>
+          <input type="number" class="input" id="cart-discount" value="0" oninput="updateTotals()">
+        </div>
+        <div class="flex-between bold" style="font-size:20px;color:var(--primary);padding:8px 0;"><span data-i18n="sale_total">TOTAL</span><span id="cart-total">₹0</span></div>
+        <div class="field">
+          <label data-i18n="sale_payment_mode">Payment Mode</label>
+          <div class="row3">
+            <button class="btn btn-sm pay-btn active" data-mode="cash" onclick="setPayMode('cash')" data-i18n="sale_cash">Cash</button>
+            <button class="btn btn-sm pay-btn btn-outline" data-mode="upi" onclick="setPayMode('upi')">UPI</button>
+            <button class="btn btn-sm pay-btn btn-outline" data-mode="credit" onclick="setPayMode('credit')" data-i18n="sale_credit">Credit</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: Staff, Mechanic, Customer Info (always visible) -->
+    <div class="card">
+      <h2 data-i18n="sale_details">👤 Sale Details</h2>
+
+      <!-- Sold By / Delivered By -->
+      <div class="row2">
+        <div class="field">
+          <label data-i18n="sale_soldby">🧾 Sold By <small style="font-weight:400;">*</small></label>
+          <select class="select" id="sale-soldby">
+            <option value="" data-i18n="sale_select_staff">— select staff —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label data-i18n="sale_deliveredby">🛵 Delivered By</label>
+          <select class="select" id="sale-deliveredby">
+            <option value="" data-i18n="sale_walkin_counter">Walk-in / Counter</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Mechanic Commission Section -->
+      <div style="background:#fdf4ff;border:1.5px solid #e9d5ff;border-radius:12px;padding:12px;margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:600;color:#7e22ce;margin-bottom:8px;" data-i18n="sale_mech_section">🔧 Mechanic Referral Commission <small style="font-weight:400;color:var(--muted);">(optional)</small></div>
+        <div class="field" style="margin-bottom:8px;">
+          <label data-i18n="sale_mech_name">Mechanic Name</label>
+          <select class="select" id="sale-mechanic" onchange="autoFillMechRate()">
+            <option value="" data-i18n="sale_no_mech">No mechanic — direct walk-in</option>
+          </select>
+        </div>
+        <div class="row2" style="align-items:flex-end;">
+          <div class="field" style="margin-bottom:0;">
+            <label data-i18n="sale_mech_comm">Commission % on this sale</label>
+            <input type="number" class="input" id="sale-mech-rate" placeholder="e.g. 3" min="0" max="20" step="0.5">
+          </div>
+          <div id="mech-comm-preview" style="font-size:13px;color:#7e22ce;font-weight:600;padding-bottom:4px;"></div>
+        </div>
+        <small style="color:var(--muted);">Customer brought by mechanic? Select mechanic and set their % cut. <a href="#" onclick="openAddMechanic();return false;" style="color:#7e22ce;">+ Add New Mechanic</a></small>
+      </div>
+
+      <!-- Walk-in Customer Tracking -->
+      <div id="retail-cust-field">
+        <div style="background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:12px;padding:12px;margin-bottom:10px;">
+          <div style="font-size:13px;font-weight:600;color:#0369a1;margin-bottom:8px;" data-i18n="sale_walkin_section">👤 Walk-in Customer <small style="font-weight:400;color:var(--muted);">(optional — for repeat tracking)</small></div>
+          <select class="select" id="retail-cust-id">
+            <option value="" data-i18n="sale_anonymous">Anonymous walk-in</option>
+          </select>
+          <small style="margin-top:6px;display:block;"><a href="#" onclick="openAddRetailCustomer();return false;" style="color:#0369a1;" data-i18n="sale_add_walkin">+ Add New Walk-in Customer to Database</a></small>
+        </div>
+      </div>
+
+      <button class="btn btn-success" onclick="completeSale()" data-i18n="sale_complete">✓ Complete Sale & Print Bill</button>
+      <button class="btn btn-outline mt-1" onclick="clearCart()" data-i18n="sale_clear">🗑 Clear Cart</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ WHATSAPP ============ -->
+<div id="tab-whatsapp" class="tab-content">
+  <div class="container">
+    <div class="chips" style="margin-top:6px;">
+      <div class="chip active" onclick="showWASection('quote',event)">Send Quote</div>
+      <div class="chip" onclick="showWASection('broadcast',event)">Broadcast</div>
+      <div class="chip" onclick="showWASection('supplier',event)">Order Stock</div>
+      <div class="chip" onclick="showWASection('outreach',event)">Customer Outreach</div>
+      <div class="chip" onclick="showWASection('orders',event)">Incoming Orders</div>
+    </div>
+
+    <!-- QUOTE -->
+    <div id="wa-quote" class="wa-section">
+      <div class="card">
+        <h2>Quote a Customer</h2>
+        <small>Trusted wholesale customers see both Instant & Credit prices automatically.</small>
+        <div class="field mt-2">
+          <label>Customer</label>
+          <select class="select" id="q-customer">
+            <option value="">— New / Walk-in —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Customer phone (e.g. 919876543210)</label>
+          <input type="text" class="input" id="q-phone" placeholder="919876543210">
+        </div>
+        <div class="field">
+          <label>Search part(s) to quote</label>
+          <div class="search-row">
+            <input type="text" class="search" id="q-search" placeholder="Part no or name" oninput="renderQuoteSearch()">
+            <button class="voice-btn" onclick="voiceSearch('q-search')">🎤</button>
+          </div>
+        </div>
+        <div id="q-results"></div>
+        <div id="q-cart" class="mt-2"></div>
+        <button class="wa-btn mt-2" onclick="sendQuote()">📲 Send Quote on WhatsApp</button>
+      </div>
+    </div>
+
+    <!-- BROADCAST -->
+    <div id="wa-broadcast" class="wa-section" style="display:none;">
+      <div class="card ai">
+        <h2>🧠 AI Broadcast Writer</h2>
+        <small>Tell AI what to say — it writes the message in tone that fits your customers (English/Hindi/Punjabi mix).</small>
+        <div class="field mt-2">
+          <label>What's the message about?</label>
+          <input type="text" class="input" id="ai-broadcast-prompt" placeholder="e.g. monsoon offer, new stock arrived, festive discount">
+        </div>
+        <button class="btn btn-ai" onclick="aiWriteBroadcast()">✨ Generate Message</button>
+      </div>
+      <div class="card">
+        <h2>Bulk Broadcast</h2>
+        <div class="field mt-2">
+          <label>Message Type</label>
+          <select class="select" id="b-type" onchange="updateBroadcastMsg()">
+            <option value="newarrival">New Stock Arrival</option>
+            <option value="pricelist">Updated Price List</option>
+            <option value="offer">Special Offer</option>
+            <option value="custom">Custom Message</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Message</label>
+          <textarea class="input" id="b-message" rows="8"></textarea>
+        </div>
+        <div class="field">
+          <label>Send To</label>
+          <select class="select" id="b-target">
+            <option value="wholesale">All Wholesale Customers</option>
+            <option value="trusted">Trusted Customers Only</option>
+            <option value="all">All Customers</option>
+          </select>
+        </div>
+        <button class="wa-btn" onclick="startBroadcast()">📢 Open Broadcast Queue</button>
+      </div>
+    </div>
+
+    <!-- SUPPLIER ORDER -->
+    <div id="wa-supplier" class="wa-section" style="display:none;">
+      <div class="card">
+        <h2>Smart Reorder from Suppliers</h2>
+        <small>AI predicts stockout dates from sales velocity. Auto-grouped by supplier with smart reorder qty.</small>
+        <div id="supplier-orders" class="mt-2"></div>
+      </div>
+    </div>
+
+    <!-- CUSTOMER OUTREACH -->
+    <div id="wa-outreach" class="wa-section" style="display:none;">
+      <div class="card ai">
+        <h2>🧠 Customer Reorder Reminders</h2>
+        <small>AI detects customers due for repeat purchase based on their buying pattern. Tap to send personalised WhatsApp.</small>
+        <div id="outreach-list" class="mt-2"></div>
+      </div>
+      <div class="card">
+        <h2>Credit Payment Reminders</h2>
+        <div id="payment-reminders"></div>
+      </div>
+    </div>
+
+    <!-- INCOMING ORDERS -->
+    <div id="wa-orders" class="wa-section" style="display:none;">
+      <div class="card">
+        <h2>Incoming WhatsApp Orders</h2>
+        <small>Log orders received on WhatsApp here.</small>
+        <button class="btn mt-2" onclick="openAddOrder()">+ Log New Order</button>
+        <div id="order-list" class="mt-2"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ AI BRAIN ============ -->
+<div id="tab-brain" class="tab-content">
+  <div class="container">
+    <div class="card ai">
+      <h2>🧠 AI Shop Assistant</h2>
+      <small>Ask anything about your shop — sales, customers, what to order, what to promote. Powered by Claude (free tier from console.anthropic.com).</small>
+      <div id="chat-thread" style="max-height:400px;overflow-y:auto;padding:8px 0;min-height:120px;">
+        <div class="chat-msg ai" id="chat-welcome"></div>
+      </div>
+      <div id="chat-suggestions" class="mt-1"></div>
+      <div class="search-row mt-2">
+        <input type="text" class="search" id="chat-input" placeholder="Ask anything…" onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="voice-btn" onclick="voiceChat()">🎤</button>
+        <button class="btn btn-ai btn-sm" style="width:auto;" onclick="sendChat()">Send</button>
+      </div>
+      <small style="display:block;margin-top:6px;"><a href="#" onclick="openAISettings();return false;">⚙ AI settings</a> · Works offline with rule-based answers if no API key set.</small>
+    </div>
+
+    <div class="chips">
+      <div class="chip ai active" onclick="showBrainSection('briefing',event)">Today's Plan</div>
+      <div class="chip" onclick="showBrainSection('reorder',event)">Smart Reorder</div>
+      <div class="chip" onclick="showBrainSection('customers',event)">Customer Insights</div>
+      <div class="chip" onclick="showBrainSection('dead',event)">Dead Stock</div>
+      <div class="chip" onclick="showBrainSection('velocity',event)">Top Movers</div>
+      <div class="chip" onclick="showBrainSection('profit',event)">Profit Analysis</div>
+      <div class="chip" onclick="showBrainSection('cleaner',event)">🧹 Data Cleaner</div>
+    </div>
+
+    <div id="brain-briefing" class="brain-section">
+      <div class="card">
+        <h2>Today's Action Plan</h2>
+        <div id="brain-actions"></div>
+      </div>
+    </div>
+
+    <div id="brain-reorder" class="brain-section" style="display:none;">
+      <div class="card">
+        <h2>Smart Reorder Recommendations</h2>
+        <small>Based on sales velocity (last 30 days). "Days left" = current stock ÷ avg daily sales.</small>
+        <div id="brain-reorder-list" class="mt-2"></div>
+      </div>
+    </div>
+
+    <div id="brain-customers" class="brain-section" style="display:none;">
+      <div class="card">
+        <h2>Customer Insights</h2>
+        <div id="brain-cust-list"></div>
+      </div>
+    </div>
+
+    <div id="brain-dead" class="brain-section" style="display:none;">
+      <div class="card">
+        <h2>Dead Stock (no sale in 90+ days)</h2>
+        <small>Consider clearance offers, return to supplier, or removing from active inventory.</small>
+        <div id="brain-dead-list" class="mt-2"></div>
+      </div>
+    </div>
+
+    <div id="brain-velocity" class="brain-section" style="display:none;">
+      <div class="card">
+        <h2>Top Movers (last 30 days)</h2>
+        <div id="brain-velocity-list"></div>
+      </div>
+    </div>
+
+    <div id="brain-profit" class="brain-section" style="display:none;">
+      <div class="card">
+        <h2>Profit Analysis</h2>
+        <div id="brain-profit-summary"></div>
+        <div class="mt-2"><b>Highest profit margin parts:</b></div>
+        <div id="brain-profit-list" class="mt-1"></div>
+      </div>
+    </div>
+
+    <!-- AI DATA CLEANER -->
+    <div id="brain-cleaner" class="brain-section" style="display:none;">
+      <div class="card ai">
+        <h2>🧹 AI Data Cleaner & Importer</h2>
+        <small>Paste messy part names below — one per line. AI will clean spelling, fix brand names, standardize to proper English, auto-assign your part numbers (GOURY001, GOURY002...), then ask you for prices one by one.</small>
+      </div>
+
+      <!-- STEP 1: Paste names -->
+      <div id="cleaner-step1" class="card">
+        <h2>Step 1 — Paste Raw Part Names</h2>
+        <small>Just paste whatever you have — messy names, Hindi-English mix, abbreviations, anything.</small>
+        <textarea class="input mt-1" id="cleaner-input" rows="10" placeholder="Examples:
+hyd pump asm mahindra 575
+CLUTCH PLT JD 5036
+ball brng 6205 skf
+rotavatr blde 540mm
+fuel fil jcb 3dx
+engine oil filtr massey
+injector pump tractor"></textarea>
+        <div class="row2 mt-2">
+          <div class="field">
+            <label>Starting Part Number</label>
+            <input class="input" id="cleaner-prefix" value="GOURY" placeholder="e.g. GOURY">
+          </div>
+          <div class="field">
+            <label>Starting Number</label>
+            <input type="number" class="input" id="cleaner-start-num" placeholder="001">
+          </div>
+        </div>
+        <button class="btn btn-ai mt-1" onclick="startDataCleaner()">🧹 Clean & Generate Part Numbers →</button>
+        <div id="cleaner-progress" class="mt-2"></div>
+      </div>
+
+      <!-- STEP 2: Price entry wizard -->
+      <div id="cleaner-step2" style="display:none;">
+        <div class="card" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:white;padding:14px;">
+          <div style="font-size:11px;opacity:.6;letter-spacing:1px;text-transform:uppercase;">Step 2 — Enter Prices</div>
+          <div style="font-size:13px;margin-top:4px;opacity:.8;" id="cleaner-price-progress-text"></div>
+          <div style="background:rgba(255,255,255,.15);border-radius:6px;height:6px;margin-top:8px;overflow:hidden;">
+            <div id="cleaner-price-bar" style="height:100%;background:#34d399;transition:width .3s;width:0%"></div>
+          </div>
+        </div>
+
+        <div class="card" id="cleaner-price-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <span class="tag ai" id="cleaner-current-partno" style="font-size:13px;padding:4px 10px;"></span>
+            <span style="font-size:12px;color:var(--muted);" id="cleaner-price-count"></span>
+          </div>
+          <div style="font-size:18px;font-weight:700;margin:8px 0 4px;" id="cleaner-current-name"></div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:14px;" id="cleaner-current-meta"></div>
+
+          <div class="row2">
+            <div class="field">
+              <label>💰 Cost Price ₹ <small>(what you buy for)</small></label>
+              <input type="number" class="input" id="cp-cost" placeholder="0" onkeydown="if(event.key==='Enter')document.getElementById('cp-mrp').focus()">
+            </div>
+            <div class="field">
+              <label>🏷️ MRP ₹ <small>(printed on box)</small></label>
+              <input type="number" class="input" id="cp-mrp" placeholder="0" onkeydown="if(event.key==='Enter')document.getElementById('cp-retail').focus()">
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label>🛒 Retail Price ₹ <small>(walk-in customer)</small></label>
+              <input type="number" class="input" id="cp-retail" placeholder="0" onkeydown="if(event.key==='Enter')document.getElementById('cp-wholesale').focus()">
+            </div>
+            <div class="field">
+              <label>🏭 Wholesale Price ₹ <small>(trusted dealer)</small></label>
+              <input type="number" class="input" id="cp-wholesale" placeholder="0" onkeydown="if(event.key==='Enter')saveCleanerPrice()">
+            </div>
+          </div>
+          <div class="field">
+            <label>📦 Opening Stock</label>
+            <input type="number" class="input" id="cp-stock" value="0" onkeydown="if(event.key==='Enter')saveCleanerPrice()">
+          </div>
+          <div class="btn-row mt-1">
+            <button class="btn btn-success" onclick="saveCleanerPrice()">✓ Save & Next →</button>
+            <button class="btn btn-outline" onclick="skipCleanerPrice()" style="width:auto;">Skip</button>
+          </div>
+          <small style="margin-top:8px;display:block;color:var(--muted);">Press Enter to jump between fields. Tab = next field.</small>
+        </div>
+
+        <div id="cleaner-price-done" style="display:none;" class="card" style="text-align:center;">
+          <div style="font-size:40px;margin-bottom:8px;">✅</div>
+          <div style="font-weight:700;font-size:18px;">All prices entered!</div>
+          <div id="cleaner-done-summary" style="color:var(--muted);margin:8px 0;font-size:14px;"></div>
+          <button class="btn btn-success mt-2" onclick="applyCleanerToInventory()">💾 Add All to Inventory</button>
+          <button class="btn btn-outline mt-1" onclick="resetCleaner()">↩ Start Over</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Cleaned preview (always visible after clean) -->
+      <div id="cleaner-preview" style="display:none;" class="card">
+        <h2>Cleaned Parts Preview</h2>
+        <div id="cleaner-preview-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ STAFF & COMMISSION ============ -->
+<div id="tab-staff" class="tab-content">
+  <div class="container">
+    <div class="card">
+      <h2>👥 Staff Performance & Commissions</h2>
+      <div class="chips" id="staff-chips">
+        <div class="chip active" onclick="showStaffSection('performance',event)">Performance</div>
+        <div class="chip" onclick="showStaffSection('commission',event)">Commissions</div>
+        <div class="chip" onclick="showStaffSection('salary',event)">Salary & Increment</div>
+        <div class="chip" onclick="showStaffSection('manage',event)">Manage Staff</div>
+      </div>
+    </div>
+
+    <div id="staff-performance" class="staff-section">
+      <div id="staff-perf-list"></div>
+    </div>
+
+    <div id="staff-commission" class="staff-section" style="display:none;">
+      <div class="card priority">
+        <h2>💰 Commission This Month</h2>
+        <small id="comm-period"></small>
+        <div id="comm-list" class="mt-2"></div>
+      </div>
+    </div>
+
+    <div id="staff-salary" class="staff-section" style="display:none;">
+      <div class="card">
+        <h2>📈 Salary & Increment Recommendations</h2>
+        <small>Increments are auto-suggested based on sales performance vs target.</small>
+        <div id="salary-list" class="mt-2"></div>
+      </div>
+    </div>
+
+    <div id="staff-manage" class="staff-section" style="display:none;">
+      <div class="card">
+        <h2>Manage Staff</h2>
+        <button class="btn" onclick="openAddStaff()">+ Add Staff Member</button>
+        <div id="staff-manage-list" class="mt-2"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ BULK IMPORT ============ -->
+<div id="tab-import" class="tab-content">
+  <div class="container">
+    <div class="card ai">
+      <h2>⚡ Bulk Inventory Import</h2>
+      <small>Upload a CSV <b>or Excel (.xlsx)</b> to add thousands of SKUs at once. The AI will map your columns automatically.</small>
+    </div>
+
+    <div class="card">
+      <h2>📥 Quick Import (CSV / Excel)</h2>
+      <div class="import-drop" onclick="document.getElementById('bulk-csv-input').click()">
+        <div class="drop-icon">📂</div>
+        <div class="bold mt-1">Tap to select CSV or Excel file</div>
+        <small>.csv, .xlsx, .xls — drag & drop or tap</small>
+      </div>
+      <input type="file" id="bulk-csv-input" accept=".csv,.tsv,.txt,.xlsx,.xls,.xlsm" style="display:none;" onchange="handleBulkCSV(event)">
+      <div id="bulk-import-status" class="mt-2"></div>
+    </div>
+
+    <div class="card">
+      <h2>📋 Template / Format</h2>
+      <small>Your file must have these column headers (in any order). Works for both CSV and Excel:</small>
+      <div style="background:#f8fafc;padding:10px;border-radius:8px;margin-top:8px;font-size:12px;font-family:monospace;overflow-x:auto;white-space:nowrap;">
+        PartNo, Name, Brand, MachineType, Category, Models, CostPrice, MRP, InstantPrice, CreditPrice, Stock, MinStock, Rack, SupplierName, SupplierPhone
+      </div>
+      <button class="btn btn-outline mt-2" onclick="downloadTemplate()">⬇ Download Template CSV</button>
+    </div>
+
+    <div class="card">
+      <h2>✏️ Paste Data (bulk text)</h2>
+      <small>Paste tab-separated or comma-separated rows below. First row = headers.</small>
+      <textarea class="input mt-1" id="paste-data" rows="6" placeholder="PartNo,Name,Brand,CostPrice,InstantPrice,Stock,Rack..."></textarea>
+      <button class="btn mt-1" onclick="parsePasteData()">Import Pasted Data</button>
+    </div>
+
+    <div class="card">
+      <h2>⚡ Quick Add Single Part</h2>
+      <small>Pre-fill optionally, then open the full unified form.</small>
+      <div class="row2 mt-1">
+        <div class="field"><label>Part No</label><input class="input" id="qa-partno" placeholder="e.g. BRG-6205" style="text-transform:uppercase;"></div>
+        <div class="field"><label>Name</label><input class="input" id="qa-name" placeholder="Part name"></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>Cost ₹</label><input type="number" class="input" id="qa-cost"></div>
+        <div class="field"><label>Price ₹</label><input type="number" class="input" id="qa-price"></div>
+        <div class="field"><label>Stock</label><input type="number" class="input" id="qa-stock"></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>Rack</label><input class="input" id="qa-rack" placeholder="A-01"></div>
+        <div class="field"><label>Brand</label><input class="input" id="qa-brand"></div>
+        <div class="field" style="display:none;"><select class="select" id="qa-machine"><option value="tractor">Tractor</option></select></div>
+      </div>
+      <button class="btn btn-success" onclick="quickAddPart()">+ Open Add Part Form</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ WHOLESALE ORDERS ============ -->
+<div id="tab-wholesale" class="tab-content">
+  <div class="container">
+    <div class="card">
+      <h2>🏭 Wholesale Orders</h2>
+      <div class="chips" id="wo-chips">
+        <div class="chip active" onclick="filterWO('all',event)">All</div>
+        <div class="chip" onclick="filterWO('previous_bills',event)">📜 Previous Bills</div>
+        <div class="chip" onclick="filterWO('pending',event)">⏳ Pending</div>
+        <div class="chip" onclick="filterWO('dispatched',event)">🚌 Dispatched</div>
+        <div class="chip" onclick="filterWO('delivered',event)">✅ Delivered</div>
+        <div class="chip" onclick="filterWO('cancelled',event)">❌ Cancelled</div>
+        <div class="chip" onclick="filterWO('credit_due',event)">💰 Credit Due</div>
+        <div class="chip" onclick="filterWO('overdue',event)">🔴 Overdue</div>
+      </div>
+      <div id="wo-credit-summary" style="display:none;margin-bottom:10px;"></div>
+      <div class="btn-row mt-1" style="flex-wrap:wrap;">
+        <button class="btn" onclick="openNewWholesaleOrder()">+ New Order</button>
+        <button class="btn btn-outline" onclick="openAddPreviousBill()" style="background:#fef9c3;color:#92400e;border-color:#fde68a;">📷 Previous Bill</button>
+        <button class="btn btn-outline" onclick="openAddWholesaleCustomer()" style="background:#f0fdf4;color:#166534;border-color:#86efac;">+ New Customer</button>
+        <button class="btn btn-outline" onclick="openRecycleBinModal()" style="background:#f1f5f9;color:#475569;border-color:#cbd5e1;">🗑 Bin</button>
+        <button class="btn btn-outline" onclick="openCashFlowPanel()" style="background:#eff6ff;color:#1e40af;border-color:#93c5fd;">📊 Cash Flow</button>
+        <button class="btn btn-outline" onclick="openCollectionBlast()" style="background:#fef9c3;color:#92400e;border-color:#fde68a;">📋 Collect</button>
+        <button class="btn btn-ai btn-sm" onclick="openWOCollectionAgent()" style="width:auto;">🤖 Agent</button>
+        <button class="btn btn-outline" onclick="gpOpenBillSearch()" style="background:#e0f2fe;color:#0369a1;border-color:#7dd3fc;">🔎 Find Bill</button>
+      </div>
+    </div>
+    <div id="wo-list"></div>
+  </div>
+</div>
+
+<!-- ============ REPORTS ============ -->
+<div id="tab-reports" class="tab-content">
+  <div class="container">
+
+    <!-- REPORT SELECTOR CARDS -->
+    <div id="rpt-menu">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;">
+        <div class="card" style="cursor:pointer;border:2px solid transparent;margin-bottom:0;" onclick="showReport('growth')">
+          <div style="font-size:28px;margin-bottom:4px;">📈</div>
+          <div style="font-weight:700;font-size:14px;">Growth Chart</div>
+          <div style="font-size:11px;color:var(--muted);">Sales by category per month</div>
+        </div>
+        <div class="card" style="cursor:pointer;border:2px solid transparent;margin-bottom:0;" onclick="showReport('customers')">
+          <div style="font-size:28px;margin-bottom:4px;">👥</div>
+          <div style="font-weight:700;font-size:14px;">Customer Base</div>
+          <div style="font-size:11px;color:var(--muted);">Tiers, repeat rate, broadcast</div>
+        </div>
+        <div class="card" style="cursor:pointer;border:2px solid transparent;margin-bottom:0;" onclick="showReport('staff')">
+          <div style="font-size:28px;margin-bottom:4px;">🔧</div>
+          <div style="font-weight:700;font-size:14px;">Staff & Mechanic</div>
+          <div style="font-size:11px;color:var(--muted);">Performance + mechanic commission</div>
+        </div>
+        <div class="card" style="cursor:pointer;border:2px solid transparent;margin-bottom:0;" onclick="showReport('salary')">
+          <div style="font-size:28px;margin-bottom:4px;">💰</div>
+          <div style="font-weight:700;font-size:14px;">Salary Calculator</div>
+          <div style="font-size:11px;color:var(--muted);">Attendance + incentive + advance</div>
+        </div>
+        <div class="card" style="cursor:pointer;border:2px solid transparent;margin-bottom:0;" onclick="showReport('scores')">
+          <div style="font-size:28px;margin-bottom:4px;">⭐</div>
+          <div style="font-weight:700;font-size:14px;">Staff Scores</div>
+          <div style="font-size:11px;color:var(--muted);">Year-end review & leaderboard</div>
+        </div>
+        <div class="card" style="cursor:pointer;border:2px solid transparent;margin-bottom:0;" onclick="showReport('backup')">
+          <div style="font-size:28px;margin-bottom:4px;">💾</div>
+          <div style="font-weight:700;font-size:14px;">Backup & Safety</div>
+          <div style="font-size:11px;color:var(--muted);">Export data, AI feedback log</div>
+        </div>
+        <div class="card" style="cursor:pointer;border:2px solid var(--success);margin-bottom:0;background:linear-gradient(135deg,#f0fdf4,#dcfce7);" onclick="showReport('priceeditor')">
+          <div style="font-size:28px;margin-bottom:4px;">📋</div>
+          <div style="font-weight:700;font-size:14px;">Live Price Editor</div>
+          <div style="font-size:11px;color:var(--muted);">Edit SKU cost, retail & wholesale <span style="color:var(--danger);font-weight:700;">🔒 Admin</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BACK BUTTON (shown when inside a report) -->
+    <div id="rpt-back-btn" style="display:none;margin-bottom:8px;">
+      <button class="btn btn-outline btn-sm" style="width:auto;" onclick="showReportMenu()">← Back to Reports</button>
+    </div>
+
+    <!-- GROWTH CHART -->
+    <div id="rpt-growth" class="rpt-section" style="display:none;">
+      <div class="card">
+        <div class="flex-between mb-1">
+          <h2>📈 Category Sales Growth</h2>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-sm btn-outline" id="chart-6m-btn" onclick="renderGrowthChart(6)" style="width:auto;padding:6px 10px;">6M</button>
+            <button class="btn btn-sm" id="chart-12m-btn" onclick="renderGrowthChart(12)" style="width:auto;padding:6px 10px;background:var(--border);color:var(--text);">12M</button>
+          </div>
+        </div>
+        <small style="color:var(--muted);">Track which machine category is growing month by month.</small>
+        <div class="chart-wrap mt-2" id="growth-chart"></div>
+        <div class="chart-legend mt-1" id="chart-legend"></div>
+      </div>
+      <div class="card">
+        <h2>📊 This Month — Category Breakdown</h2>
+        <div id="category-breakdown"></div>
+      </div>
+    </div>
+
+    <!-- CUSTOMER BASE -->
+    <div id="rpt-customers" class="rpt-section" style="display:none;">
+      <div class="card">
+        <h2>👥 Customer Base</h2>
+        <div class="field">
+          <input type="text" class="search" id="cust-base-search" placeholder="Search by name or phone…" oninput="renderCustomerBase()">
+        </div>
+        <div class="chips mb-1">
+          <div class="chip active" onclick="setCustFilter('all',event)">All</div>
+          <div class="chip" onclick="setCustFilter('wholesale',event)">Wholesale</div>
+          <div class="chip" onclick="setCustFilter('retail',event)">Retail</div>
+          <div class="chip" onclick="setCustFilter('platinum',event)">Platinum</div>
+          <div class="chip" onclick="setCustFilter('inactive',event)">Inactive 60d+</div>
+        </div>
+        <div id="cust-base-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;"></div>
+        <div id="customer-base-list"></div>
+      </div>
+      <div class="card">
+        <h2>📲 Broadcast to Segment</h2>
+        <div class="field"><label>Target</label>
+          <select class="select" id="bc-segment">
+            <option value="all">All Customers</option>
+            <option value="wholesale">Wholesale Only</option>
+            <option value="retail">Retail Walk-in</option>
+            <option value="platinum">Platinum Tier</option>
+            <option value="inactive">Inactive 60+ days</option>
+          </select>
+        </div>
+        <div class="field"><label>Message</label>
+          <textarea class="input" id="bc-msg" rows="4" placeholder="New stock arrived! Tractor filters now available at best price…"></textarea>
+        </div>
+        <button class="btn btn-ai" onclick="aiWriteBroadcastRpt()">✨ Write with AI</button>
+        <button class="btn mt-1" onclick="broadcastToSegment()">📢 Open Broadcast Queue</button>
+      </div>
+    </div>
+
+    <!-- STAFF + MECHANIC REPORTS -->
+    <div id="rpt-staff" class="rpt-section" style="display:none;">
+      <div class="card">
+        <h2>👤 Staff Sales Performance</h2>
+        <small style="color:var(--muted);">This month vs target</small>
+        <div id="rpt-staff-perf" class="mt-1"></div>
+      </div>
+      <div class="card" style="border-left:4px solid #7e22ce;background:#fdf4ff;">
+        <h2 style="color:#7e22ce;">🔧 Mechanic Commissions This Month</h2>
+        <small>Retail sales where a mechanic brought the customer.</small>
+        <div id="mech-comm-list" class="mt-2"></div>
+        <button class="btn btn-sm btn-outline mt-2" onclick="openAddMechanic()">+ Add Mechanic</button>
+        <button class="btn btn-sm btn-outline mt-1" onclick="openMechanicList()">View All Mechanics</button>
+      </div>
+    </div>
+
+    <!-- SALARY CALCULATOR -->
+    <div id="rpt-salary" class="rpt-section" style="display:none;">
+      <div class="card ai">
+        <h2>💰 Salary Calculator</h2>
+        <small>Select a staff member to calculate their monthly pay: Basic (attendance) + Sales Commission + Delivery Bonus − Advance.</small>
+        <div class="field mt-2"><label>Staff Member</label>
+          <select class="select" id="sal-staff-sel" onchange="loadSalaryCalc()">
+            <option value="">— select staff —</option>
+          </select>
+        </div>
+        <div id="sal-calc-body"></div>
+      </div>
+      <div class="card">
+        <h2>📋 Salary Paid Records</h2>
+        <button class="btn btn-sm btn-outline" onclick="openRecordSalaryPaid()">+ Record Payment</button>
+        <div id="salary-paid-list" class="mt-2"></div>
+      </div>
+      <div class="card priority">
+        <h2>⚠️ Advance Tracker</h2>
+        <small>Cap: ₹20,000 per staff. Medical/family emergency can override with admin approval.</small>
+        <div id="advance-tracker-list" class="mt-2"></div>
+        <button class="btn btn-warn mt-1" onclick="openRecordAdvance()">+ Record Advance</button>
+      </div>
+    </div>
+
+    <!-- STAFF SCORES -->
+    <div id="rpt-scores" class="rpt-section" style="display:none;">
+      <div class="card">
+        <h2>⭐ Staff Scores — Year-End Review</h2>
+        <small>Rate staff on Behaviour, Output, Effort (1–5). Customer ratings auto-pulled from sales.</small>
+        <div class="field mt-2"><label>Select Staff to Review</label>
+          <select class="select" id="score-staff-sel" onchange="loadStaffScore()">
+            <option value="">— select —</option>
+          </select>
+        </div>
+        <div id="score-body"></div>
+      </div>
+      <div class="card">
+        <h2>🏆 Year-End Leaderboard</h2>
+        <small>Overall score = 60% internal review + 40% customer ratings</small>
+        <div id="score-leaderboard" class="mt-1"></div>
+      </div>
+    </div>
+
+    <!-- BACKUP & DATA SAFETY -->
+    <div id="rpt-backup" class="rpt-section" style="display:none;">
+      <div class="card priority">
+        <h2>💾 Data Safety & Backup</h2>
+        <div style="font-size:13px;margin-bottom:10px;">Last backup: <b id="last-backup-date">Never</b></div>
+        <button class="btn" onclick="exportData()">⬇ Download Full Backup (JSON)</button>
+        <button class="btn btn-outline mt-1" onclick="exportInventoryCSV()">⬇ Export Inventory CSV</button>
+        <button class="btn btn-outline mt-1" onclick="exportSalesCSV()">⬇ Export Sales CSV</button>
+        <button class="btn btn-outline mt-1" onclick="exportStaffCSV()">⬇ Export Staff & Salary CSV</button>
+        <button class="btn btn-outline mt-1" onclick="document.getElementById('import-file2').click()">⬆ Restore from Backup</button>
+        <input type="file" id="import-file2" accept=".json" style="display:none;" onchange="importData(event)">
+        <div class="divider"></div>
+        <label style="font-size:13px;">Remind me to backup every</label>
+        <select class="select mt-1" id="backup-freq" style="width:auto;">
+          <option value="1">Every day</option>
+          <option value="3" selected>Every 3 days</option>
+          <option value="7">Every week</option>
+        </select>
+        <button class="btn btn-sm btn-outline mt-1" onclick="saveBackupPref()" style="width:auto;">Save</button>
+      </div>
+      <div class="card" id="migrate-parts-card">
+        <h2>⚡ Cloud Sync Upgrade</h2>
+        <div id="migrate-status-block">
+          <div id="migrate-done-msg" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 14px;font-size:13px;color:#166534;font-weight:600;">
+            ✅ Already on fast sync — each part saves individually, not as a full blob. You're good.
+          </div>
+          <div id="migrate-needed-msg" style="display:none;">
+            <div style="font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.6;">
+              Right now every save pushes your <b>entire inventory</b> to Firebase as one big blob — even when you only changed one part. This card upgrades to <b>per-part sync</b>: each part gets its own Firestore document, so a save only uploads that one part (~3KB instead of ~3MB).<br><br>
+              <b>Run once. Takes 10–30 seconds. Keep internet on. Do not close the app.</b>
+            </div>
+            <div id="migrate-progress" style="display:none;margin-bottom:10px;">
+              <div style="background:#e5e7eb;border-radius:6px;height:8px;overflow:hidden;">
+                <div id="migrate-bar" style="height:8px;background:#16a34a;border-radius:6px;width:0%;transition:width 0.3s;"></div>
+              </div>
+              <div id="migrate-label" style="font-size:12px;color:var(--muted);margin-top:5px;text-align:center;">Starting…</div>
+            </div>
+            <button class="btn" id="migrate-run-btn" onclick="runPartsMigration()" style="background:#16a34a;">
+              ⚡ Upgrade to fast sync — <span id="migrate-part-count"></span> parts
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>🔧 Bulk Category Fix</h2>
+        <small style="color:var(--muted);">Find parts where the category looks wrong based on the part name — review and fix in one tap.</small>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="flex:1;min-width:120px;">
+            <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Wrong Category</label>
+            <input class="input mt-1" id="bcf-wrong" placeholder="e.g. reel" style="text-transform:lowercase;">
+          </div>
+          <div style="flex:1;min-width:120px;">
+            <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Correct Category</label>
+            <input class="input mt-1" id="bcf-correct" placeholder="e.g. seal">
+          </div>
+          <div style="flex:1;min-width:120px;">
+            <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Name contains (optional)</label>
+            <input class="input mt-1" id="bcf-namefilter" placeholder="e.g. seal">
+          </div>
+          <button class="btn btn-outline btn-sm" style="white-space:nowrap;" onclick="bcfPreview()">🔍 Preview</button>
+        </div>
+        <div id="bcf-result" style="margin-top:12px;"></div>
+      </div>
+
+      <div class="card">
+        <h2>🧠 AI Feedback Log</h2>
+        <small>Rate AI suggestions to improve future recommendations.</small>
+        <div id="ai-feedback-list" class="mt-2"></div>
+        <button class="btn btn-outline btn-sm mt-1" onclick="exportAIFeedback()">⬇ Export Feedback CSV</button>
+      </div>
+    </div>
+
+    <!-- LIVE PRICE EDITOR -->
+    <div id="rpt-priceeditor" class="rpt-section" style="display:none;">
+
+      <!-- Locked state for non-admins -->
+      <div id="xls-locked-msg" class="card xls-locked" style="display:none;">
+        <div class="lock-icon">🔒</div>
+        <div style="font-weight:700;font-size:17px;margin-top:8px;">Admin Only</div>
+        <div style="color:var(--muted);font-size:13px;margin-top:6px;">Live Price Editor is restricted to the Admin (Owner) role only.<br>Please login as admin to edit prices.</div>
+      </div>
+
+      <!-- Editor (admin only) -->
+      <div id="xls-editor-wrap">
+        <!-- Header bar -->
+        <div class="card" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-left:4px solid var(--success);margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <div>
+              <h2 style="margin:0;">📋 Live SKU Price Editor</h2>
+              <small style="color:var(--muted);">Edit prices inline · Import Excel/CSV · Paste & clean data</small>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <span id="xls-unsaved-count" class="xls-badge">0 unsaved</span>
+              <button class="xls-save-all-btn" id="xls-save-all-btn" onclick="xlsSaveAll()" disabled>💾 Save All</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="card" style="padding:12px;">
+          <div class="xls-tabs">
+            <div class="xls-tab active" onclick="xlsSwitchTab('edit',this)">✏️ Live Edit</div>
+            <div class="xls-tab" onclick="xlsSwitchTab('import',this)">📤 Import Excel/CSV</div>
+            <div class="xls-tab" onclick="xlsSwitchTab('paste',this)">📋 Paste Data</div>
+            <div class="xls-tab" onclick="xlsSwitchTab('bulk',this)">🏷️ Bulk Discount</div>
+          </div>
+
+          <!-- TAB: LIVE EDIT -->
+          <div id="xls-panel-edit" class="xls-tab-panel active">
+            <div class="xls-toolbar">
+              <input class="xls-search" id="xls-search" placeholder="🔍  Search part no, name, brand…" oninput="xlsSearchDebounced()">
+              <select class="select" id="xls-machine-filter" style="width:auto;padding:9px 10px;" onchange="xlsRender()">
+                <option value="">All machines</option>
+                <option value="tractor">Tractor</option>
+                <option value="harvester">Harvester</option>
+                <option value="jcb">JCB</option>
+                <option value="rotavator">Rotavator</option>
+                <option value="other">Other</option>
+              </select>
+              <select class="select" id="xls-sort" style="width:auto;padding:9px 10px;" onchange="xlsRender()">
+                <option value="name">Sort: Name</option>
+                <option value="partno">Sort: Part No</option>
+                <option value="cost">Sort: Cost ↑</option>
+                <option value="margin">Sort: Margin ↓</option>
+                <option value="stock">Sort: Stock ↓</option>
+              </select>
+              <span id="xls-row-count" style="font-size:11px;color:var(--muted);white-space:nowrap;"></span>
+              <button class="btn btn-sm btn-success" style="width:auto;white-space:nowrap;" onclick="xlsAddPartModal()">+ Add Part</button>
+            </div>
+            <div class="xls-wrap">
+              <table class="xls-table" id="xls-table">
+                <thead>
+                  <tr>
+                    <th>Part No</th>
+                    <th>Name / Brand</th>
+                    <th>Cost ₹</th>
+                    <th>MRP ₹</th>
+                    <th>Ret.Disc%</th>
+                    <th>Retail ₹</th>
+                    <th>WS.Disc%</th>
+                    <th>Wholesale ₹</th>
+                    <th style="background:#0f5e56;">Retail<br><span style="font-size:9px;opacity:.8;">Margin%&nbsp;·&nbsp;₹</span></th>
+                    <th style="background:#1e3a5f;">WS<br><span style="font-size:9px;opacity:.8;">Margin%&nbsp;·&nbsp;₹</span></th>
+                    <th style="background:#065f46;white-space:nowrap;">Stock<br><span style="font-size:9px;opacity:.8;">current</span></th>
+                    <th style="white-space:nowrap;">Min<br><span style="font-size:9px;color:rgba(255,255,255,.7);">alert</span></th>
+                    <th>Rack</th>
+                    <th></th>
+                    <th style="width:28px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="xls-tbody"></tbody>
+              </table>
+            </div>
+            <div id="xls-empty" style="display:none;" class="empty mt-1"><div class="icon">🔍</div>No parts match your search</div>
+            <div style="margin-top:8px;font-size:11px;color:var(--muted);">💡 Tap any cell to edit. Disc% auto-calculates price from MRP. Enter/Tab jumps to next cell.</div>
+          </div>
+
+          <!-- TAB: IMPORT EXCEL/CSV -->
+          <div id="xls-panel-import" class="xls-tab-panel">
+            <div class="imp-drop" id="imp-drop" onclick="document.getElementById('imp-file-input').click()"
+              ondragover="event.preventDefault();this.classList.add('dragover')"
+              ondragleave="this.classList.remove('dragover')"
+              ondrop="event.preventDefault();this.classList.remove('dragover');impHandleFile(event.dataTransfer.files[0])">
+              <span class="drop-icon">📂</span>
+              <div style="font-weight:700;font-size:15px;">Drop Excel / CSV here or tap to browse</div>
+              <small style="color:var(--muted);">.xlsx, .xls, .csv — any column order, AI maps automatically</small>
+            </div>
+            <input type="file" id="imp-file-input" accept=".csv,.xlsx,.xls,.tsv,.txt" style="display:none;" onchange="impHandleFile(this.files[0])">
+
+            <!-- Column mapping (shown after file load) -->
+            <div id="imp-col-map-wrap" style="display:none;margin-top:12px;">
+              <div style="font-weight:700;font-size:14px;margin-bottom:6px;">🗂️ Map Your Columns</div>
+              <small style="color:var(--muted);">We auto-detected these mappings. Adjust if needed, then click Preview.</small>
+              <div style="overflow-x:auto;margin-top:8px;">
+                <table class="imp-col-map" id="imp-col-map-table"></table>
+              </div>
+              <button class="btn mt-2" onclick="impRunPreview()">👁️ Preview & Clean →</button>
+            </div>
+
+            <!-- Preview (shown after mapping) -->
+            <div id="imp-preview-wrap" style="display:none;margin-top:12px;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                <div style="font-weight:700;font-size:14px;">🧹 Cleaned Preview</div>
+                <span id="imp-stat-new" class="imp-stat new">0 New</span>
+                <span id="imp-stat-update" class="imp-stat update">0 Updates</span>
+                <span id="imp-stat-skip" class="imp-stat skip">0 Skipped</span>
+              </div>
+              <div style="overflow-x:auto;max-height:320px;border:1px solid var(--border);border-radius:8px;">
+                <table class="imp-preview-table" id="imp-preview-table">
+                  <thead><tr id="imp-preview-head"></tr></thead>
+                  <tbody id="imp-preview-body"></tbody>
+                </table>
+              </div>
+              <div style="margin-top:6px;font-size:11px;color:var(--muted);">
+                <span style="color:#166534;font-weight:700;">■</span> New SKU &nbsp;
+                <span style="color:#92400e;font-weight:700;">■</span> Updates existing &nbsp;
+                <span style="color:#991b1b;font-weight:700;">■</span> Skipped (no Part No)
+              </div>
+              <div class="btn-row mt-2">
+                <button class="btn btn-success" onclick="impApplyToEditor()">✅ Apply to Price Editor</button>
+                <button class="btn btn-outline" onclick="impReset()">↩ Start Over</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: PASTE DATA -->
+          <div id="xls-panel-paste" class="xls-tab-panel">
+            <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">
+              Paste rows directly from Excel, WhatsApp, or any spreadsheet. First row should be headers.<br>
+              <b>Supported columns:</b> PartNo, Name, Brand, CostPrice, MRP, InstantPrice / RetailPrice, CreditPrice / WholesalePrice, Stock, Rack / Location
+            </div>
+            <textarea class="paste-area" id="imp-paste-area" rows="10"
+              placeholder="Paste Excel rows here (Ctrl+V)&#10;&#10;Example:&#10;PartNo&#9;Name&#9;Brand&#9;CostPrice&#9;MRP&#9;RetailPrice&#9;WholesalePrice&#9;Rack&#10;BRG-6205&#9;Ball Bearing&#9;SKF&#9;85&#9;160&#9;130&#9;140&#9;A-22"></textarea>
+            <div class="btn-row mt-2">
+              <button class="btn" onclick="impParsePaste()">🔍 Parse & Preview →</button>
+              <button class="btn btn-outline" onclick="document.getElementById('imp-paste-area').value=''">Clear</button>
+            </div>
+            <div id="imp-paste-preview" style="display:none;margin-top:12px;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                <div style="font-weight:700;font-size:14px;">🧹 Cleaned Preview</div>
+                <span id="imp-paste-stat-new" class="imp-stat new">0 New</span>
+                <span id="imp-paste-stat-update" class="imp-stat update">0 Updates</span>
+                <span id="imp-paste-stat-skip" class="imp-stat skip">0 Skipped</span>
+              </div>
+              <div style="overflow-x:auto;max-height:320px;border:1px solid var(--border);border-radius:8px;">
+                <table class="imp-preview-table" id="imp-paste-table">
+                  <thead><tr id="imp-paste-head"></tr></thead>
+                  <tbody id="imp-paste-body"></tbody>
+                </table>
+              </div>
+              <div class="btn-row mt-2">
+                <button class="btn btn-success" onclick="impApplyPaste()">✅ Apply to Price Editor</button>
+                <button class="btn btn-outline" onclick="document.getElementById('imp-paste-preview').style.display='none'">Cancel</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: BULK DISCOUNT -->
+          <div id="xls-panel-bulk" class="xls-tab-panel">
+            <small style="color:var(--muted);">Apply a % discount off MRP to auto-fill retail or wholesale prices across filtered SKUs.</small>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+              <div>
+                <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Retail Discount off MRP</div>
+                <div style="display:flex;gap:6px;align-items:center;">
+                  <input type="number" class="input" id="disc-retail-pct" placeholder="e.g. 15" min="0" max="99" step="0.5" style="flex:1;padding:9px 10px;">
+                  <span style="font-size:14px;font-weight:700;color:var(--muted);">%</span>
+                </div>
+                <button class="btn btn-sm mt-1" style="width:100%;background:var(--warning);color:#78350f;" onclick="xlsApplyDiscount('retail')">Apply to Retail</button>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Wholesale Discount off MRP</div>
+                <div style="display:flex;gap:6px;align-items:center;">
+                  <input type="number" class="input" id="disc-ws-pct" placeholder="e.g. 20" min="0" max="99" step="0.5" style="flex:1;padding:9px 10px;">
+                  <span style="font-size:14px;font-weight:700;color:var(--muted);">%</span>
+                </div>
+                <button class="btn btn-sm mt-1" style="width:100%;background:var(--primary);" onclick="xlsApplyDiscount('wholesale')">Apply to Wholesale</button>
+              </div>
+            </div>
+            <div id="disc-preview" style="display:none;margin-top:8px;background:white;border-radius:8px;padding:8px;font-size:12px;color:var(--muted);"></div>
+            <small style="display:block;margin-top:6px;color:var(--muted);">⚠️ Applies only to currently <b>filtered/visible</b> SKUs in the Live Edit tab. Review & Save All after applying.</small>
+            <div class="divider"></div>
+            <div style="font-weight:600;font-size:14px;margin-bottom:6px;">📥 Download Template</div>
+            <small style="color:var(--muted);">Download a pre-filled CSV template with your current SKUs for editing in Excel.</small>
+            <div class="btn-row mt-2">
+              <button class="btn btn-outline" onclick="xlsDownloadTemplate()">⬇ Download CSV Template</button>
+              <button class="btn btn-outline" onclick="xlsDownloadFilled()">⬇ Export Current Prices CSV</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Title</h2>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- ============ OWNER CONTROL TOWER ============ -->
+<div id="tab-owner" class="tab-content">
+  <div class="container">
+    <div class="card" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:white;">
+      <div style="font-size:11px;opacity:.6;text-transform:uppercase;letter-spacing:1px;">👑 Owner Control Tower</div>
+      <div id="owner-date" style="font-size:13px;opacity:.6;margin-top:2px;"></div>
+      <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;">
+        <div>
+          <div style="font-size:13px;font-weight:700;" id="biz-status-label">🟢 Business Active</div>
+          <div style="font-size:11px;opacity:.65;margin-top:2px;" id="biz-status-sub">Sales &amp; billing are live</div>
+        </div>
+        <button id="biz-toggle-btn" onclick="toggleBusinessActive()" style="padding:8px 16px;border-radius:20px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:#16a34a;color:white;min-width:80px;">Active</button>
+      </div>
+      <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;">
+        <div><div style="font-size:13px;font-weight:700;" id="agents-status-label">🤖 Smart Agents</div><div style="font-size:11px;opacity:.65;margin-top:2px;" id="agents-status-sub">Off — activate business first</div></div>
+        <button id="agents-toggle-btn" onclick="toggleSmartAgents()" style="padding:8px 16px;border-radius:20px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:#6b7280;color:white;min-width:80px;" disabled>Off</button>
+      </div>
+      <div style="font-size:12px;background:rgba(255,255,255,.1);border-radius:8px;padding:8px;margin-top:10px;opacity:.8;">🔒 Visible to Admin &amp; Manager only</div>
+    </div>
+
+    <div class="tower-grid">
+      <div class="tower-card profit ow-profit-gate"><div class="t-label">Today's Profit</div><div class="t-num" id="ow-today-profit">₹0</div><div class="t-sub" id="ow-today-margin">0% margin</div></div>
+      <div class="tower-card"><div class="t-label">Today's Revenue</div><div class="t-num" id="ow-today-rev">₹0</div><div class="t-sub" id="ow-today-bills">0 bills</div></div>
+      <div class="tower-card warn ow-profit-gate"><div class="t-label">Month Profit</div><div class="t-num" id="ow-month-profit">₹0</div><div class="t-sub" id="ow-month-margin">0% margin</div></div>
+      <div class="tower-card danger"><div class="t-label">Credit Outstanding</div><div class="t-num" id="ow-due">₹0</div><div class="t-sub" id="ow-due-count">0 customers</div></div>
+    </div>
+
+    <div class="card">
+      <h2>💳 Today's Payment Split</h2>
+      <div class="payment-split">
+        <div class="psplit-card"><div class="ps-num" id="ow-cash">₹0</div><div class="ps-label">💵 Cash</div></div>
+        <div class="psplit-card"><div class="ps-num" id="ow-upi">₹0</div><div class="ps-label">📱 UPI</div></div>
+        <div class="psplit-card"><div class="ps-num" id="ow-credit">₹0</div><div class="ps-label">📋 Credit</div></div>
+      </div>
+    </div>
+
+    <div class="card ow-profit-gate">
+      <h2>🔥 Top Profit Items Today</h2>
+      <div id="ow-top-items"><div class="empty" style="padding:20px;">No sales today yet</div></div>
+    </div>
+
+    <div class="card ow-profit-gate" style="border-left:4px solid var(--danger);">
+      <h2>🚨 Profit Leakage Tracker</h2>
+      <div id="ow-leakage"></div>
+    </div>
+
+    <div class="card">
+      <h2>👥 Staff Efficiency (This Month)</h2>
+      <div id="ow-staff-eff"></div>
+    </div>
+
+    <div class="card">
+      <h2>🔒 Daily Cash Closing</h2>
+      <small>Count physical cash + check UPI. System shows expected amounts.</small>
+      <div class="row2 mt-2">
+        <div class="field"><label>Cash in Hand ₹</label><input type="number" class="input" id="closing-cash" placeholder="Count & enter"></div>
+        <div class="field"><label>UPI Received ₹</label><input type="number" class="input" id="closing-upi" placeholder="Check UPI app"></div>
+      </div>
+      <button class="btn btn-success" onclick="doClosing()">✓ Run Day Closing</button>
+      <div id="closing-result" class="mt-2"></div>
+    </div>
+
+    <div class="card">
+      <h2>📋 Activity Log <span style="font-weight:400;font-size:12px;color:var(--muted);">Last 20 actions</span></h2>
+      <div id="ow-activity-log"></div>
+    </div>
+
+    <!-- USER MANAGEMENT — Owner only -->
+    <div class="card" style="border-left:4px solid var(--ai);background:linear-gradient(135deg,#fafafa,#f5f3ff);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <h2 style="margin:0;">👤 User Access Control</h2>
+        <button class="btn btn-sm" style="background:var(--ai);width:auto;" onclick="ownerAddUser()">+ Add User</button>
+      </div>
+      <small style="color:var(--muted);">Only you can activate/deactivate accounts and set roles. Inactive users cannot login.</small>
+      <div id="owner-user-list" class="mt-2"></div>
+    </div>
+    <!-- DATA MANAGER — Invoices & Customers -->
+    <div class="card" style="border-left:4px solid var(--danger);background:linear-gradient(135deg,#fff5f5,#fef2f2);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <h2 style="margin:0;">🗂 Data Manager</h2>
+        <span style="font-size:11px;color:var(--muted);">Review &amp; clean data</span>
+      </div>
+      <small style="color:var(--muted);">Review old invoices and customer records. Delete dummy/test data before going live.</small>
+      <div class="btn-row mt-2">
+        <button class="btn btn-sm btn-outline" style="flex:1;" onclick="openInvoiceManager()">📄 Invoices <span id="dm-inv-count" style="background:var(--danger);color:white;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;">0</span></button>
+        <button class="btn btn-sm btn-outline" style="flex:1;" onclick="openCustomerManager()">👥 Customers <span id="dm-cust-count" style="background:var(--primary);color:white;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;">0</span></button>
+      </div>
+      <button class="btn btn-danger mt-2" style="font-size:13px;" onclick="confirmClearAll()">🗑 Clear ALL Sales + Customers (Fresh Start)</button>
+    </div>
+  </div>
+</div>
+<div id="tab-collections" class="tab-content">
+  <div class="container">
+    <div class="card ai">
+      <h2>💰 Collections & Expenses</h2>
+      <small>Track money collected from shopkeepers + travel/trip expenses.</small>
+    </div>
+
+    <div class="chips" id="coll-chips">
+      <div class="chip active" onclick="showCollSection('summary',event)">Today Summary</div>
+      <div class="chip" onclick="showCollSection('add-collection',event)">+ Collection</div>
+      <div class="chip" onclick="showCollSection('add-expense',event)">+ Expense</div>
+      <div class="chip" onclick="showCollSection('history',event)">History</div>
+      <div class="chip" onclick="showCollSection('trips',event)">Trip P&L</div>
+    </div>
+
+    <!-- TODAY SUMMARY -->
+    <div id="coll-summary" class="coll-section">
+      <div class="tower-grid">
+        <div class="tower-card profit"><div class="t-label">Collected Today</div><div class="t-num" id="cs-collected">₹0</div></div>
+        <div class="tower-card danger"><div class="t-label">Expenses Today</div><div class="t-num" id="cs-expense">₹0</div></div>
+        <div class="tower-card"><div class="t-label">Net Today</div><div class="t-num" id="cs-net">₹0</div></div>
+        <div class="tower-card warn"><div class="t-label">Total Outstanding</div><div class="t-num" id="cs-outstanding">₹0</div></div>
+      </div>
+      <div class="card">
+        <h2>📊 Collection by Mode</h2>
+        <div class="mode-split">
+          <div class="mode-pill"><div class="mp-num" id="csm-cash">₹0</div><div>💵 Cash</div></div>
+          <div class="mode-pill"><div class="mp-num" id="csm-upi">₹0</div><div>📱 UPI</div></div>
+          <div class="mode-pill"><div class="mp-num" id="csm-cheque">₹0</div><div>🏦 Cheque</div></div>
+        </div>
+      </div>
+      <div class="card"><h2>📝 Today's Entries</h2><div id="cs-today-list"></div></div>
+    </div>
+
+    <!-- ADD COLLECTION -->
+    <div id="coll-add-collection" class="coll-section" style="display:none;">
+      <div class="card">
+        <h2>➕ Add Collection Entry</h2>
+        <div class="field"><label>Shopkeeper / Customer</label>
+          <select class="select" id="coll-cust-sel" onchange="prefillCollPhone()">
+            <option value="">— select existing customer —</option>
+          </select>
+          <input class="input" id="coll-cust-name" placeholder="Or type name manually" style="margin-top:6px;">
+        </div>
+        <div class="field"><label>Phone (for WhatsApp receipt)</label><input class="input" id="coll-phone" placeholder="919876543210"></div>
+        <div class="row2">
+          <div class="field"><label>Amount ₹ *</label><input type="number" class="input" id="coll-amount" placeholder="0"></div>
+          <div class="field"><label>Mode</label>
+            <select class="select" id="coll-mode">
+              <option value="cash">💵 Cash</option>
+              <option value="upi">📱 UPI</option>
+              <option value="cheque">🏦 Cheque</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Date</label><input type="date" class="input" id="coll-date"></div>
+          <div class="field"><label>Collected By</label><select class="select" id="coll-by"><option value="">— staff —</option></select></div>
+        </div>
+        <div class="field"><label>Area / Location</label><input class="input" id="coll-location" placeholder="e.g. Gwalior, Morena"></div>
+        <div class="field"><label>Note</label><input class="input" id="coll-note" placeholder="Optional"></div>
+        <button class="btn btn-success" onclick="saveCollection()">✓ Save Collection</button>
+        <button class="btn btn-outline mt-1" id="coll-wa-btn" onclick="sendCollectionWA()" style="display:none;">📲 Send WhatsApp Receipt</button>
+      </div>
+    </div>
+
+    <!-- ADD EXPENSE -->
+    <div id="coll-add-expense" class="coll-section" style="display:none;">
+      <div class="card">
+        <h2>➖ Add Expense Entry</h2>
+        <div class="field"><label>Type *</label>
+          <select class="select" id="exp-type">
+            <option value="fuel">⛽ Fuel</option>
+            <option value="food">🍱 Food</option>
+            <option value="hotel">🏨 Hotel</option>
+            <option value="toll">🛣️ Toll</option>
+            <option value="vehicle">🔧 Vehicle Repair</option>
+            <option value="other">📌 Other</option>
+          </select>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Amount ₹ *</label><input type="number" class="input" id="exp-amount" placeholder="0"></div>
+          <div class="field"><label>Date</label><input type="date" class="input" id="exp-date"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Spent By</label><select class="select" id="exp-by"><option value="">— staff —</option></select></div>
+          <div class="field"><label>Trip / Area</label><input class="input" id="exp-trip" placeholder="e.g. Morena trip"></div>
+        </div>
+        <div class="field"><label>Note</label><input class="input" id="exp-note" placeholder="Details"></div>
+        <button class="btn btn-danger" onclick="saveExpense()">✓ Save Expense</button>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div id="coll-history" class="coll-section" style="display:none;">
+      <div class="card">
+        <h2>📜 Full History</h2>
+        <input type="text" class="search" id="coll-search" placeholder="Search by name, area…" oninput="renderCollHistory()">
+        <div id="coll-history-list" class="mt-2"></div>
+      </div>
+    </div>
+
+    <!-- TRIP P&L -->
+    <div id="coll-trips" class="coll-section" style="display:none;">
+      <div class="card">
+        <h2>🗺️ Trip P&L</h2>
+        <small>Net Trip Profit = Total Collection − Total Expenses per area</small>
+        <div id="coll-trip-list" class="mt-2"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-brandmatrix" class="tab-content">
+  <div class="container">
+
+    <!-- Hero -->
+    <div style="background:linear-gradient(135deg,#0f766e,#0d5c56);border-radius:14px;padding:16px;margin-bottom:14px;color:white;">
+      <div style="font-size:11px;opacity:.7;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">🏷️ Brand Discount Matrix</div>
+      <div style="font-size:16px;font-weight:700;line-height:1.5;margin-bottom:4px;">Set trade discount % per brand once.<br>Prices auto-fill from MRP everywhere.</div>
+      <div style="font-size:12px;opacity:.85;line-height:1.6;">e.g. Oxid — Cost: MRP−50% · Wholesale: MRP−30% · Retail: MRP−10%<br>Enter MRP on any Oxid part → all prices calculate instantly.</div>
+    </div>
+
+    <!-- Catalogue queue shortcut -->
+    <div id="bm-queue-alert" style="display:none;background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:12px 14px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#78350f;" id="bm-queue-alert-title">⚡ Parts ready to auto-price</div>
+          <div style="font-size:12px;color:#92400e;margin-top:2px;" id="bm-queue-alert-body"></div>
+        </div>
+        <button class="btn btn-warn btn-sm" onclick="bmAutoApproveAll()" style="width:auto;white-space:nowrap;font-size:13px;">Auto-price all →</button>
+      </div>
+    </div>
+
+    <!-- Profit strip -->
+    <div id="bm-profit-strip" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:14px;-webkit-overflow-scrolling:touch;scrollbar-width:none;"></div>
+
+    <!-- Add / Edit form -->
+    <div class="card" id="bm-form-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h2 style="margin:0;" id="bm-form-title">➕ Add Brand</h2>
+        <button id="bm-cancel-btn" onclick="bmCancelEdit()" style="display:none;background:none;border:none;color:var(--muted);font-size:26px;cursor:pointer;line-height:1;padding:0 4px;">×</button>
+      </div>
+      <input type="hidden" id="bm-edit-id">
+
+      <div class="row2">
+        <div class="field">
+          <label>Brand Name *</label>
+          <input class="input" id="bm-brand" placeholder="e.g. Oxid, SKF, Mahindra" autocomplete="off" oninput="bmLiveCalc()" style="text-transform:uppercase;" onblur="this.value=this.value.toUpperCase()">
+        </div>
+        <div class="field">
+          <label>Category <span style="font-size:10px;color:var(--muted);">(optional)</span></label>
+          <input class="input" id="bm-category" placeholder="Bearings, Filters, Belts…">
+        </div>
+      </div>
+
+      <!-- Default supplier -->
+      <div class="field">
+        <label>Default Supplier <span style="font-size:10px;color:var(--muted);">(auto-fills on all parts of this brand)</span></label>
+        <input class="input" id="bm-supplier" placeholder="e.g. Singh Auto Parts"
+          list="global-supplier-list" autocomplete="off"
+          oninput="supAutofill('bm-supplier','bm-supplier-phone')">
+        <input class="input" id="bm-supplier-phone" placeholder="Supplier phone (auto-fills)" type="tel" style="margin-top:6px;font-size:13px;">
+      </div>
+
+      <!-- Discount grid -->
+      <div style="background:#f8fafc;border-radius:12px;padding:14px;margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Discount off MRP (%)</div>
+        <div class="row3">
+          <div class="field" style="margin-bottom:0;">
+            <label style="color:#dc2626;font-weight:700;">💰 Your Cost</label>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input type="number" class="input" id="bm-cost-disc" placeholder="50" min="0" max="99" step="0.5" oninput="bmLiveCalc()" style="border-color:#fca5a5;">
+              <span style="font-weight:700;color:var(--muted);">%</span>
+            </div>
+            <div id="bm-cost-preview" style="font-size:11px;color:#dc2626;margin-top:3px;font-weight:600;min-height:15px;"></div>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label style="color:#d97706;font-weight:700;">🏭 Wholesale</label>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input type="number" class="input" id="bm-ws-disc" placeholder="30" min="0" max="99" step="0.5" oninput="bmLiveCalc()" style="border-color:#fde68a;">
+              <span style="font-weight:700;color:var(--muted);">%</span>
+            </div>
+            <div id="bm-ws-preview" style="font-size:11px;color:#d97706;margin-top:3px;font-weight:600;min-height:15px;"></div>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label style="color:#0f766e;font-weight:700;">🛒 Retail</label>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input type="number" class="input" id="bm-retail-disc" placeholder="10" min="0" max="99" step="0.5" oninput="bmLiveCalc()" style="border-color:#99f6e4;">
+              <span style="font-weight:700;color:var(--muted);">%</span>
+            </div>
+            <div id="bm-retail-preview" style="font-size:11px;color:#0f766e;margin-top:3px;font-weight:600;min-height:15px;"></div>
+          </div>
+        </div>
+
+        <!-- Simulator -->
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+          <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:8px;">📐 Simulator — type a sample MRP:</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="number" class="input" id="bm-sim-mrp" placeholder="₹ e.g. 1000" oninput="bmLiveCalc()" style="max-width:140px;padding:9px 10px;">
+            <div id="bm-sim-result" style="font-size:13px;line-height:1.9;flex:1;min-width:160px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Margin insight -->
+      <div id="bm-margin-insight" style="display:none;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;border-radius:10px;padding:10px 14px;margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">💡 Profitability at these discounts</div>
+        <div id="bm-margin-body" style="font-size:13px;color:#14532d;line-height:1.7;"></div>
+      </div>
+
+      <button class="btn btn-success" onclick="bmSave()">✅ Save Brand</button>
+    </div>
+
+    <!-- Saved brands list -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <h2 style="margin:0;">
+          Saved Brands
+          <span id="bm-count-badge" style="background:var(--primary);color:white;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;margin-left:6px;vertical-align:middle;">0</span>
+        </h2>
+        <input class="search" id="bm-search" placeholder="Search…" oninput="renderBrandList()"
+          style="width:120px;padding:7px 10px;position:static;top:0;">
+      </div>
+      <div id="bm-list">
+        <div class="empty" style="padding:32px;text-align:center;">
+          <div style="font-size:40px;margin-bottom:10px;">🏷️</div>
+          No brands yet.<br><small>Add Oxid, SKF, Mahindra etc. above to get started.</small>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ============ BOTTOM NAV ============ -->
+<!-- ============================================================ -->
+<!-- PURCHASES TAB — Supplier Ledger + Bill Photo Scanner        -->
+<!-- ============================================================ -->
+<div id="tab-purchases" class="tab-content">
+<div class="container">
+
+  <!-- Sub-tabs -->
+  <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:14px;overflow-x:auto;">
+    <button class="xls-tab active" id="ptab-ledger" onclick="showPurchaseSection('ledger')">📒 Ledger</button>
+    <button class="xls-tab" id="ptab-advances" onclick="showPurchaseSection('advances')">🤝 Advances</button>
+    <button class="xls-tab" id="ptab-dayclosing" onclick="showPurchaseSection('dayclosing')">🔒 Day Close</button>
+    <button class="xls-tab" id="ptab-bankowner" onclick="showPurchaseSection('bankowner')">🏦 Bank & Pay</button>
+    <button class="xls-tab" id="ptab-bills" onclick="showPurchaseSection('bills')">📷 Bills</button>
+    <button class="xls-tab" id="ptab-suppliers" onclick="showPurchaseSection('suppliers')">🏢 Suppliers</button>
+    <button class="xls-tab" id="ptab-incoming" onclick="showPurchaseSection('incoming')">📦 Incoming</button>
+  </div>
+
+  <!-- LEDGER SECTION -->
+  <div id="psec-ledger">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+      <select class="select" id="pf-supplier" style="flex:1;min-width:140px;" onchange="renderLedger()">
+        <option value="">All Suppliers</option>
+      </select>
+      <select class="select" id="pf-status" style="width:120px;" onchange="renderLedger()">
+        <option value="">All</option>
+        <option value="paid">Paid</option>
+        <option value="partial">Partial</option>
+        <option value="unpaid">Unpaid</option>
+      </select>
+      <button class="btn btn-sm btn-ai" onclick="openAddPurchase()">+ Add Purchase</button>
+      <button class="btn btn-sm btn-outline" style="background:#f1f5f9;color:#475569;border-color:#cbd5e1;" onclick="openRecycleBinModal()">🗑 Bin</button>
+    </div>
+    <div id="ledger-summary" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px;"></div>
+    <div id="ledger-list"></div>
+  </div>
+
+  <!-- ===== SUPPLIER ADVANCES SECTION ===== -->
+  <div id="psec-advances" style="display:none;">
+    <!-- Summary bar -->
+    <div class="money-flow-summary" id="adv-summary-grid"></div>
+
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+      <select class="select" id="advf-supplier" style="flex:1;min-width:140px;" onchange="renderAdvances()">
+        <option value="">All Suppliers</option>
+      </select>
+      <select class="select" id="advf-status" style="width:120px;" onchange="renderAdvances()">
+        <option value="">All</option>
+        <option value="pending">Pending</option>
+        <option value="partial">Partially Adjusted</option>
+        <option value="adjusted">Fully Adjusted</option>
+      </select>
+      <button class="btn btn-sm btn-warn" onclick="openAddAdvance()">+ Give Advance</button>
+    </div>
+
+    <div class="card ai" style="margin-bottom:10px;padding:10px 12px;">
+      <div style="font-size:12px;color:var(--ai);font-weight:600;margin-bottom:3px;">💡 What is Supplier Advance?</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;">Money given to a supplier <b>before</b> receiving goods — to book stock, secure bulk deals, or sustain their cashflow. Advances get adjusted when the supplier delivers goods and raises a bill.</div>
+    </div>
+
+    <div id="advances-list"></div>
+  </div>
+
+  <!-- ===== DAY CLOSING SECTION ===== -->
+  <div id="psec-dayclosing" style="display:none;">
+
+    <!-- Today's entry / open form -->
+    <div class="card" id="day-close-today-card">
+      <div class="dc-head">
+        <div class="dc-date" id="dc-today-label">Today — Loading…</div>
+        <div id="dc-today-status"></div>
+      </div>
+
+      <div id="dc-entry-form">
+        <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px;">Money Received Today</div>
+        <div class="dc-payment-grid">
+          <div class="dc-pay-box">
+            <div class="dpb-icon">💵</div>
+            <div class="dpb-label">Cash</div>
+            <input type="number" class="input" id="dc-cash" placeholder="0" style="padding:6px 8px;font-size:15px;font-weight:700;text-align:center;margin-top:4px;" oninput="dcUpdateTotal()">
+          </div>
+          <div class="dc-pay-box">
+            <div class="dpb-icon">📱</div>
+            <div class="dpb-label">UPI</div>
+            <input type="number" class="input" id="dc-upi" placeholder="0" style="padding:6px 8px;font-size:15px;font-weight:700;text-align:center;margin-top:4px;" oninput="dcUpdateTotal()">
+          </div>
+          <div class="dc-pay-box">
+            <div class="dpb-icon">🏦</div>
+            <div class="dpb-label">NEFT/RTGS</div>
+            <input type="number" class="input" id="dc-neft" placeholder="0" style="padding:6px 8px;font-size:15px;font-weight:700;text-align:center;margin-top:4px;" oninput="dcUpdateTotal()">
+          </div>
+        </div>
+
+        <div class="dc-total-row">
+          <div class="dct-label">Total Collected</div>
+          <div class="dct-val" id="dc-total-display">₹0</div>
+        </div>
+
+        <div style="margin-top:10px;">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;">Reconciliation (optional)</div>
+          <div class="row2">
+            <div class="field"><label>Physical Cash in Hand (₹)</label><input type="number" class="input" id="dc-physical-cash" placeholder="Count & enter" oninput="dcUpdateTotal()"></div>
+            <div class="field"><label>Notes / Remarks</label><input class="input" id="dc-notes" placeholder="e.g. 2 credit sales pending"></div>
+          </div>
+          <div id="dc-mismatch-warn" style="display:none;" class="dc-mismatch-row">
+            <span>⚠️ Cash mismatch</span><span id="dc-mismatch-amt" style="font-weight:700;color:#d97706;"></span>
+          </div>
+        </div>
+
+        <div class="btn-row mt-2">
+          <button class="btn btn-success" onclick="saveDayClosing()">🔒 Close Today</button>
+          <button class="btn btn-outline" onclick="saveDayClosingDraft()">Save Draft</button>
+        </div>
+      </div>
+
+      <!-- Locked view (shown when today already closed) -->
+      <div id="dc-locked-view" style="display:none;">
+        <div class="dc-payment-grid" id="dc-locked-grid"></div>
+        <div class="dc-total-row">
+          <div class="dct-label">Total Collected</div>
+          <div class="dct-val" id="dc-locked-total"></div>
+        </div>
+        <div id="dc-locked-mismatch" style="margin-top:8px;"></div>
+        <button class="btn btn-outline btn-sm mt-2" onclick="dcReopen()" style="width:auto;">✏️ Edit / Reopen</button>
+      </div>
+    </div>
+
+    <!-- Historical day closings -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <h2 style="margin:0;">📅 Past Closings</h2>
+        <button class="btn btn-sm btn-outline" onclick="dcExportSummary()" style="width:auto;">Export</button>
+      </div>
+      <div id="day-closings-history"></div>
+    </div>
+  </div>
+
+  <!-- ===== BANK & PAYABLES SECTION ===== -->
+  <div id="psec-bankowner" style="display:none;">
+
+    <!-- Money Flow Summary -->
+    <div class="money-flow-summary" id="bank-flow-summary"></div>
+
+    <!-- Bank Accounts -->
+    <div class="acc-section-header">
+      <span class="acc-icon">🏦</span>
+      <h3>Bank Accounts & OD Limits</h3>
+      <button class="btn btn-sm" style="width:auto;background:var(--bg);color:var(--text);border:1px solid var(--border);" onclick="openAddBankAccount()">+ Add Bank</button>
+    </div>
+    <div id="bank-accounts-list" style="margin-bottom:16px;"></div>
+
+    <!-- Payables in Next 30 Days -->
+    <div class="acc-section-header">
+      <span class="acc-icon">📅</span>
+      <h3>Pay in Next 30 Days</h3>
+      <span class="acc-total text-danger" id="payable30-total">₹0</span>
+    </div>
+    <div class="card ai" style="padding:10px 12px;margin-bottom:10px;">
+      <div style="font-size:12px;color:var(--ai);font-weight:600;margin-bottom:3px;">🤖 Auto-calculated from your supplier dues + advances</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;">All unpaid/partial purchase bills due in the next 30 days are listed below. You can also add manual payables (rent, EMI, utility bills).</div>
+    </div>
+    <button class="btn btn-sm btn-outline" style="margin-bottom:10px;width:auto;" onclick="openAddManualPayable()">+ Add Manual Payable</button>
+    <div id="payables-30-list"></div>
+
+    <!-- Cash Flow Leakage Tracker -->
+    <div class="acc-section-header" style="margin-top:16px;">
+      <span class="acc-icon">🔍</span>
+      <h3>Where Is Money Leaking?</h3>
+    </div>
+    <div id="leakage-tracker-list" style="margin-bottom:12px;"></div>
+
+  </div>
+
+  <!-- BILL PHOTOS SECTION -->
+  <div id="psec-bills" style="display:none;">
+    <div class="card ai" style="margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:600;color:var(--ai);margin-bottom:6px;">📷 Scan Purchase Bill with AI</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Click a photo of your supplier bill — AI will read the supplier name, items, amounts and auto-fill a purchase entry.</div>
+      <div id="bill-drop-zone" style="border:2px dashed var(--ai);border-radius:12px;padding:28px 16px;text-align:center;cursor:pointer;background:rgba(124,58,237,.04);" onclick="document.getElementById('bill-file-input').click()">
+        <div style="font-size:36px;margin-bottom:8px;">📷</div>
+        <div style="font-size:14px;font-weight:600;color:var(--ai);">Tap to take photo or upload bill</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">Supports JPG, PNG — camera works on mobile</div>
+      </div>
+      <input type="file" id="bill-file-input" accept="image/*" capture="environment" style="display:none;" onchange="handleBillPhoto(this)">
+      <div id="bill-preview-wrap" style="display:none;margin-top:12px;">
+        <img id="bill-preview-img" style="width:100%;max-height:220px;object-fit:contain;border-radius:8px;border:1px solid var(--border);">
+        <div id="bill-scan-status" style="margin-top:8px;font-size:13px;color:var(--ai);font-weight:600;text-align:center;"></div>
+        <div id="bill-scan-result" style="display:none;margin-top:10px;"></div>
+      </div>
+    </div>
+    <div class="card"><div class="flex-between mb-1"><h2 style="margin:0;">Recent Bills</h2><button class="btn btn-sm btn-outline" style="width:auto;background:#f1f5f9;color:#475569;border-color:#cbd5e1;" onclick="openRecycleBinModal()">🗑 Bin</button></div><div id="bills-list"></div></div>
+  </div>
+
+  <!-- SUPPLIERS SECTION -->
+  <div id="psec-suppliers" style="display:none;">
+    <!-- Toolbar -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+      <input class="search" id="sup-search" placeholder="Search suppliers…" oninput="renderSuppliersList()" style="flex:1;min-width:140px;top:0;position:static;padding:10px 12px;">
+      <button class="btn btn-ai btn-sm" onclick="openAddSupplier()" style="width:auto;white-space:nowrap;">+ Add Supplier</button>
+    </div>
+    <!-- Summary stats bar -->
+    <div id="sup-stats-bar" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px;"></div>
+    <!-- Supplier cards list -->
+    <div id="suppliers-list"></div>
+    <!-- Supplier detail panel (shown when a supplier is tapped) -->
+    <div id="sup-detail-panel" style="display:none;"></div>
+  </div>
+
+  <div id="psec-incoming" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:13px;color:var(--muted);">Parts ordered from suppliers — not yet arrived</div>
+      <button class="btn btn-sm btn-ai" onclick="openAddIncoming()">+ Add</button>
+    </div>
+    <div id="incoming-list"></div>
+  </div>
+
+</div>
+</div>
+
+<!-- ============ PURCHASE ORDERS TAB ============ -->
+<div id="tab-po" class="tab-content">
+<div class="container">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+    <h2 style="margin:0;">📋 Purchase Orders</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-sm" onclick="openCreatePO()">+ New PO</button>
+      <select id="po-status-filter" class="input" style="width:140px;padding:6px 8px;font-size:13px;" onchange="renderPOList()">
+        <option value="all">All Status</option>
+        <option value="draft">Draft</option>
+        <option value="sent">Sent to Supplier</option>
+        <option value="partial">Partially Received</option>
+        <option value="received">Fully Received</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </div>
+  </div>
+  <div id="po-list-container"></div>
+</div>
+</div>
+
+<div id="tab-demand" class="tab-content">
+  <div class="container">
+    <div class="card" style="border-left:4px solid var(--warning);background:#fffbeb;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <h2 style="margin:0;">Customer Demand Inbox</h2>
+        <span id="demand-count-badge" style="background:#f59e0b;color:#78350f;font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;"></span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);">Parts customers asked for that you don't carry. High/medium demand = consider ordering.</div>
+    </div>
+    <div class="chips" id="demand-filter-chips">
+      <div class="chip active" onclick="demandFilter('all',this)">All</div>
+      <div class="chip" onclick="demandFilter('high',this)" style="border-color:#dc2626;color:#dc2626;">High demand</div>
+      <div class="chip" onclick="demandFilter('medium',this)" style="border-color:#f59e0b;color:#d97706;">Medium</div>
+      <div class="chip" onclick="demandFilter('low',this)">Low</div>
+    </div>
+    <div id="demand-list"></div>
+    <button class="btn btn-outline mt-2" onclick="openAddDemandEntry()" style="font-size:13px;">+ Add Manually</button>
+  </div>
+</div>
+
+
+<div class="bottom-nav" style="overflow-x:auto;justify-content:flex-start;gap:0;padding-left:0;padding-right:0;">
+  <div class="nav-item active" data-tab="home" onclick="goTab('home')" style="min-width:60px;">
+    <span class="icon">🏠</span><span data-i18n="nav_home">Home</span>
+  </div>
+  <div class="nav-item" data-tab="owner" onclick="goTab('owner')" style="min-width:65px;" id="nav-owner">
+    <span class="icon">👑</span><span data-i18n="nav_owner">Owner</span>
+  </div>
+  <div class="nav-item" data-tab="inventory" onclick="goTab('inventory')" style="min-width:60px;" id="nav-inventory">
+    <span class="icon">📦</span><span data-i18n="nav_stock">Stock</span>
+  </div>
+  <div class="nav-item" data-tab="catalogue" onclick="goTab('catalogue')" style="min-width:60px;" id="nav-catalogue">
+    <span class="icon">📋</span><span>Catalogue</span>
+  </div>
+  <div class="nav-item" data-tab="sale" onclick="goTab('sale')" style="min-width:60px;">
+    <span class="icon">🧾</span><span data-i18n="nav_sale">Sale</span>
+  </div>
+  <div class="nav-item" data-tab="wholesale" onclick="goTab('wholesale')" style="min-width:70px;">
+    <span class="icon">🏭</span><span data-i18n="nav_wholesale">Wholesale</span>
+  </div>
+  <div class="nav-item" data-tab="staff" onclick="goTab('staff')" style="min-width:60px;">
+    <span class="icon">👥</span><span data-i18n="nav_staff">Staff</span>
+  </div>
+  <div class="nav-item" data-tab="reports" onclick="goTab('reports')" style="min-width:70px;">
+    <span class="icon">📊</span><span data-i18n="nav_reports">Reports</span>
+  </div>
+  <div class="nav-item" data-tab="whatsapp" onclick="goTab('whatsapp')" style="min-width:60px;">
+    <span class="icon">💬</span><span data-i18n="nav_wa">WA</span>
+  </div>
+  <div class="nav-item" data-tab="import" onclick="goTab('import')" style="min-width:60px;">
+    <span class="icon">⚡</span><span data-i18n="nav_import">Import</span>
+  </div>
+  <div class="nav-item" data-tab="collections" onclick="goTab('collections')" style="min-width:70px;">
+    <span class="icon">💰</span><span data-i18n="nav_collect">Collect</span>
+  </div>
+  <div class="nav-item" data-tab="po" onclick="goTab('po');renderPOList()" style="min-width:54px;" id="nav-po">
+    <div style="font-size:18px;">📋</div><div style="font-size:10px;">POs</div>
+  </div>
+  <div class="nav-item" data-tab="demand" onclick="goTab('demand');renderDemandInbox()" style="min-width:64px;" id="nav-demand">
+    <span class="icon">📡</span><span data-i18n="nav_demand">Demand</span>
+  </div>
+  <div class="nav-item brain" data-tab="brain" onclick="goTab('brain')" style="min-width:55px;">
+    <span class="icon">🧠</span><span data-i18n="nav_ai">AI</span>
+  </div>
+  <div class="nav-item" data-tab="purchases" onclick="goTab('purchases')" style="min-width:65px;">
+    <span class="icon">🛒</span><span data-i18n="nav_purchase">Purchase</span>
+  </div>
+  <div class="nav-item" data-tab="brandmatrix" onclick="goTab('brandmatrix')" style="min-width:68px;" id="nav-brandmatrix">
+    <span class="icon">🏷️</span><span>Brands</span>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="/js/00-ai-proxy.js"></script>
+<script type="module" src="/js/01-firebase-sync.mjs"></script>
+
+<!-- SheetJS (Excel) + ZXing (barcode) are loaded ON DEMAND via _loadLib() — PERF: they used to
+     download + parse ~1 MB of JS on every app open, even though they're only needed for imports/scanning. -->
+<script src="/js/02-lib-loader.js"></script>
+
+<script src="/js/03-app-core.js"></script>
+<!-- SheetJS for Excel import in Price Editor -->
+<!-- duplicate xlsx tag removed: was loaded twice, ~900KB wasted per cold load -->
+
+<div class="offline-banner" id="offline-banner">
+  ⚠️ NO INTERNET — Records saving on this device only. <span id="offline-pending-count"></span>Do NOT close this tab — sync resumes automatically when connection returns.
+</div>
+
+<!-- ============ PHOTO GRID OVERLAY ============ -->
+<div class="photo-grid-overlay" id="photo-grid-overlay" onclick="if(event.target===this)closePhotoGrid()">
+  <div class="photo-grid-panel">
+    <div class="photo-grid-hdr">
+      <div>
+        <h3>Find Part: ⬛ Barcode &nbsp;|&nbsp; 📸 AI Photo &nbsp;|&nbsp; Browse Grid</h3>
+        <div id="vt-header-badge" style="font-size:10px;color:rgba(255,255,255,.6);margin-top:3px;display:none;">🧠 <span id="vt-header-count">0</span> parts learned</div>
+      </div>
+      <div class="photo-grid-search">
+        <input type="text" id="photo-grid-search-input" placeholder="Filter by name or brand…" oninput="renderPhotoGrid()" autocomplete="off">
+        <button class="photo-grid-scan-btn" id="photo-grid-barcode-btn" onclick="openBarcodeScanner()" title="Scan barcode on box/part" style="font-size:16px; letter-spacing:-1px;">⬛</button>
+        <button class="photo-grid-scan-btn" id="photo-grid-scan-btn" onclick="triggerPartScan()" title="AI photo match — learns every scan">📸</button>
+        <button class="photo-grid-close" onclick="closePhotoGrid()">×</button>
+      </div>
+    </div>
+    <!-- Scan result bar — hidden until AI responds -->
+    <div id="scan-result-bar" style="display:none; background:#1e293b; color:white; padding:12px 14px; flex-shrink:0; font-size:13px;">
+      <div id="scan-status-txt" style="font-size:12px; opacity:.8; margin-bottom:6px;">🤖 Identifying part…</div>
+      <div id="scan-match-area"></div>
+    </div>
+    <div class="photo-grid-chips" id="photo-grid-chips"></div>
+    <div class="photo-grid-count" id="photo-grid-count"></div>
+    <div class="photo-grid-body">
+      <div class="pgrid" id="photo-grid-items"></div>
+    </div>
+  </div>
+</div>
+<!-- Hidden camera input for part scan -->
+<input type="file" id="part-scan-input" accept="image/*" capture="environment" style="display:none;" onchange="handlePartScanPhoto(this)">
+
+<!-- ============ BARCODE SCANNER OVERLAY ============ -->
+<div class="barcode-overlay" id="barcode-overlay">
+  <div class="barcode-hdr">
+    <span style="font-size:20px">⬛</span>
+    <div class="barcode-hdr-title">Scan Barcode / QR Code</div>
+    <button class="barcode-close-btn" onclick="closeBarcodeScanner()">×</button>
+  </div>
+  <div class="barcode-video-wrap" id="barcode-video-wrap">
+    <video id="barcode-video" playsinline muted autoplay></video>
+    <div class="barcode-reticle">
+      <div class="barcode-corner tl"></div>
+      <div class="barcode-corner tr"></div>
+      <div class="barcode-corner bl"></div>
+      <div class="barcode-corner br"></div>
+    </div>
+    <div class="barcode-hint">Point at barcode on box or part</div>
+    <button class="barcode-torch-btn" id="barcode-torch-btn" onclick="toggleTorch()" title="Torch">🔦</button>
+  </div>
+  <div class="barcode-result-banner" id="barcode-result-banner">
+    <div id="barcode-result-inner"></div>
+  </div>
+</div>
+
+
+<button class="agent-fab" id="agent-fab" onclick="toggleAgentPanel()" title="AI Agent Monitor">
+  <span>🤖</span><span class="agent-badge" id="agent-badge"></span>
+</button>
+
+<div class="agent-panel" id="agent-panel">
+  <div class="agent-hdr">
+    <div style="flex:1">
+      <div class="agent-hdr-title">🤖 AI Agent Monitor</div>
+      <div class="agent-hdr-status" id="agent-status-txt">Alerts only · Data deletion is owner-controlled</div>
+    </div>
+    <button class="agent-close" onclick="toggleAgentPanel()">X</button>
+  </div>
+  <div class="agent-tabs">
+    <button class="agent-tab active" id="agtab-all" onclick="agentTab('all')">All</button>
+    <button class="agent-tab" id="agtab-data" onclick="agentTab('data')">Data</button>
+    <button class="agent-tab" id="agtab-ops" onclick="agentTab('ops')">Ops</button>
+    <button class="agent-tab" id="agtab-app" onclick="agentTab('app')">App</button>
+  </div>
+  <div class="agent-body" id="agent-body">
+    <div class="ag-think">Tap Run Agent to start</div>
+  </div>
+  <button class="agent-run-btn" id="agent-run-btn" onclick="runAgent()">Run Full Review</button>
+  <div class="agent-last-run" id="agent-last-run">Never run</div>
+</div>
+
+<div class="urg-overlay" id="urg-overlay">
+  <div class="urg-box">
+    <div class="urg-hdr">
+      <span style="font-size:20px">!</span>
+      <h3>URGENT - Action Required</h3>
+      <button onclick="closeUrgent()" style="background:rgba(255,255,255,.2);border:none;color:white;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">X</button>
+    </div>
+    <div class="urg-list" id="urg-list"></div>
+    <div class="urg-footer">
+      <button onclick="closeUrgent()" style="flex:1;padding:10px;background:#f1f5f9;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Dismiss</button>
+      <button onclick="closeUrgent();toggleAgentPanel();" style="flex:2;padding:10px;background:#7c3aed;color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Open Agent</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
+
+<script src="/js/04-app-features.js"></script>
+
+<script src="/js/05-i18n.js"></script>
+
+
+<script src="/js/06-catalogue.js"></script>
+
+<script src="/js/07-sw-register.js"></script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     GOURY OS  ·  CENTRAL NERVOUS SYSTEM  ·  v2.0
+     ═══════════════════════════════════════════════════════════════════════════
+     The data spine of the entire Goury / Orbion / Forus ecosystem.
+     
+     WHAT THIS IS:
+     ─────────────
+     This file turns ShopAI from a standalone shop app into the authoritative
+     DATA PLATFORM for every future app built on this business. It exposes:
+
+     1. GouryOS.query()       — query any collection (parts, sales, customers…)
+     2. GouryOS.compute()     — pre-built intelligence from the Smart engine
+     3. GouryOS.on/emit()     — real-time event bus across apps & windows
+     4. GouryOS.webhook()     — push live events to external HTTPS endpoints
+     5. GouryOS.register()    — generate API keys for new apps
+     6. GouryOS.BroadcastChannel — cross-tab real-time sync (no server needed)
+     7. window.__GOURY_STATE  — live reactive pointer to full state
+     8. window.__GOURY_SMART  — live pointer to the Smart analytics engine
+
+     APPS THAT CAN PLUG IN:
+     ──────────────────────
+     • Orbion Operations Dashboard  (rice-mill parts demand, reorder signals)
+     • JARVIS Voice Assistant       (daily briefings, stock alerts)
+     • Rice-Mill Customer Portal    (live price + availability lookup)
+     • Delivery Staff App           (order dispatch, location tracking)
+     • Forus Inventory Sync         (cross-business stock awareness)
+     • Any future app, forever.
+
+     HOW TO USE FROM ANOTHER APP:
+     ──────────────────────────────
+     const key = 'your-registered-key';
+     
+     // Read data
+     const r = await GouryOS.query('parts', { where: { machineType:'tractor' }, limit:20 }, key);
+     
+     // Get computed intelligence
+     const intel = GouryOS.compute('briefing', {}, key);
+     
+     // Subscribe to events (same tab)
+     GouryOS.on('sale.completed', e => console.log(e), key);
+     
+     // Register a webhook endpoint
+     GouryOS.webhook.register('https://myapp.com/hook', ['sale.completed','stockout'], key);
+     ═══════════════════════════════════════════════════════════════════════════ -->
+
+<link rel="stylesheet" href="/css/agent.css">
+
+<!-- FAB -->
+<button id="cns-fab" onclick="CNS_UI.toggle()" title="GouryOS — Central Nervous System">
+  🧠
+  <span id="cns-fab-count"></span>
+</button>
+
+<!-- Panel -->
+<div id="cns-panel">
+  <!-- Top bar -->
+  <div class="cns-topbar">
+    <div class="cns-topbar-row1">
+      <span class="cns-logo">🧠</span>
+      <div class="cns-title">
+        <div class="cns-title-main">GOURY OS · CENTRAL NERVOUS SYSTEM</div>
+        <div class="cns-title-sub" id="cns-sub">Initialising data platform…</div>
+      </div>
+      <div class="cns-pulse-dot"></div>
+      <button class="cns-close-btn" onclick="CNS_UI.toggle()">✕</button>
+    </div>
+    <div class="cns-vitals" id="cns-vitals">
+      <div class="cns-vital"><div class="cns-vital-n" id="cv-skus">—</div><div class="cns-vital-l">Total SKUs</div></div>
+      <div class="cns-vital"><div class="cns-vital-n amber" id="cv-low">—</div><div class="cns-vital-l">Low/Out</div></div>
+      <div class="cns-vital"><div class="cns-vital-n" id="cv-sales">—</div><div class="cns-vital-l">Sales 30d</div></div>
+      <div class="cns-vital"><div class="cns-vital-n" id="cv-apps">—</div><div class="cns-vital-l">Apps</div></div>
+    </div>
+  </div>
+  <!-- Tabs -->
+  <div class="cns-tabs">
+    <button class="cns-tab-btn active" id="cnstab-status"    onclick="CNS_UI.tab('status')">● Status</button>
+    <button class="cns-tab-btn"        id="cnstab-intel"     onclick="CNS_UI.tab('intel')">⚡ Intel</button>
+    <button class="cns-tab-btn"        id="cnstab-events"    onclick="CNS_UI.tab('events')">◎ Events</button>
+    <button class="cns-tab-btn"        id="cnstab-apps"      onclick="CNS_UI.tab('apps')">⬡ Apps</button>
+    <button class="cns-tab-btn"        id="cnstab-webhooks"  onclick="CNS_UI.tab('webhooks')">↗ Webhooks</button>
+    <button class="cns-tab-btn"        id="cnstab-api"       onclick="CNS_UI.tab('api')">⌥ API</button>
+  </div>
+  <!-- Body (rendered by JS) -->
+  <div class="cns-body" id="cns-body"></div>
+</div>
+
+<script src="/js/08-goury-os-cns.js"></script>
+
+<script src="/js/09-cns-ui.js"></script>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     GOURY PATCH v3  —  full performance + cloud sync audit fixes
+     Layered on top of the original app. Overrides specific hot-path
+     functions only; the originals stay intact as fallbacks.
+
+     Fixes, in order of impact:
+       1. DB.set     — async localStorage writes (was blocking 200-600ms)
+       2. save()     — stop pushing ALL large arrays on every parts edit
+       3. xlsRender  — skip when SKU editor tab hidden
+       4. patchInventoryCard — fast prepend instead of full re-render
+       5. renderSaleSearch   — debounce + use precomputed saleable index
+       6. mergeArrays — timestamp-correct price merge (sync correctness)
+       7. catDadSave  — per-doc Firestore write (pricing was not syncing)
+       8. catDadAuto  — debounce keystroke margin calc
+       9. catRenderDadQueue — debounce rebuilds
+     ═══════════════════════════════════════════════════════════════════ -->
+<script src="/js/10-perf-patches.js"></script>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     GOURY BILLING UPGRADE (2026-09-28)
+     Edit saved bills · change invoice no · H/C/R rates while billing ·
+     new part while billing · print · bill search · party search + info ·
+     party phone edit · multiple bill photos · notes for owner · AI help
+     H = Wholesale (creditPrice) · C = Cost (costPrice) · R = Retail (instantPrice)
+     ═══════════════════════════════════════════════════════════════════ -->
+<link rel="stylesheet" href="/css/extras.css">
+<div id="gp-print-area"></div>
+
+<script src="/js/11-app-extras.js"></script>
+<script src="/js/12-ai-proxy-mode.js"></script>
+
+</body>
+</html>

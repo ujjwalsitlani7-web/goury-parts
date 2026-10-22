@@ -1,0 +1,12 @@
+{
+  "name": "goury-parts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Goury Parts: spare parts shop management PWA",
+  "scripts": {
+    "dev": "vercel dev",
+    "dev:static": "npx --yes serve@14.2.4 public -l 3000",
+    "check": "node scripts/check.mjs"
+  },
+  "type": "module"
+}

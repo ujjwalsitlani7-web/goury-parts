@@ -1,0 +1,50 @@
+.gp-rate-chip{display:inline-block;margin-top:4px;background:#fff7ed;color:#b45309;border:1px solid #fed7aa;border-radius:7px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;}
+.gp-sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;}
+.gp-sheet{background:#fff;width:100%;max-width:640px;max-height:94vh;overflow-y:auto;border-radius:18px 18px 0 0;padding:14px 16px 22px;box-sizing:border-box;}
+.gp-sheet-hdr{display:flex;justify-content:space-between;align-items:center;gap:8px;position:sticky;top:-14px;background:#fff;padding:6px 0 10px;margin-top:-6px;z-index:2;border-bottom:1px solid #f1f5f9;margin-bottom:10px;}
+.gp-sheet-hdr h3{margin:0;font-size:16px;}
+.gp-x{background:#f1f5f9;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;flex-shrink:0;}
+.gp-row{display:flex;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid #f1f5f9;}
+.gp-mini{width:62px;padding:6px 4px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px;text-align:center;box-sizing:border-box;}
+.gp-hcr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.gp-hcr .gp-box{border:1.5px solid #e2e8f0;border-radius:10px;padding:8px;text-align:center;}
+.gp-hcr .gp-box b{display:block;font-size:18px;}
+.gp-hcr .gp-box input{width:100%;box-sizing:border-box;margin-top:4px;padding:7px;border:1px solid #cbd5e1;border-radius:7px;font-size:15px;text-align:center;}
+.gp-photos{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+.gp-photo{position:relative;width:74px;height:74px;}
+.gp-photo img{width:74px;height:74px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;cursor:pointer;}
+.gp-photo button{position:absolute;top:-6px;right:-6px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;line-height:22px;padding:0;}
+.gp-party-box{position:relative;margin-bottom:6px;}
+.gp-party-list{position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,.12);max-height:260px;overflow-y:auto;z-index:50;}
+.gp-party-list div{padding:9px 12px;border-bottom:1px solid #f1f5f9;cursor:pointer;font-size:13px;}
+.gp-party-list div:hover{background:#f0fdfa;}
+.gp-info{background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:10px 12px;margin:6px 0 10px;font-size:13px;}
+.gp-info h4{margin:8px 0 4px;font-size:12px;color:#0369a1;text-transform:uppercase;letter-spacing:.3px;}
+.gp-tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:6px;font-weight:700;}
+.gp-chat{display:flex;flex-direction:column;gap:8px;min-height:180px;}
+.gp-msg{padding:9px 12px;border-radius:12px;font-size:14px;line-height:1.45;white-space:pre-wrap;max-width:88%;}
+.gp-msg.u{align-self:flex-end;background:#0f766e;color:#fff;}
+.gp-msg.a{align-self:flex-start;background:#f1f5f9;color:#0f172a;}
+.gp-sugg{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;}
+.gp-sugg button{background:#f0fdfa;border:1px solid #99f6e4;color:#0f766e;border-radius:14px;padding:5px 10px;font-size:12px;cursor:pointer;}
+.gp-note{border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+.gp-note.done{opacity:.55;background:#f8fafc;}
+#gp-print-area{display:none;}
+@media print{
+  body.gp-printing > *{display:none !important;}
+  body.gp-printing > #gp-print-area{display:block !important;}
+  @page{margin:8mm;}
+}
+#gp-print-area{font-family:Arial,Helvetica,sans-serif;color:#000;}
+.gpp{max-width:760px;margin:0 auto;font-size:13px;}
+.gpp.small{max-width:72mm;font-size:11px;}
+.gpp h1{font-size:20px;margin:0;text-align:center;}
+.gpp.small h1{font-size:15px;}
+.gpp .c{text-align:center;}
+.gpp table{width:100%;border-collapse:collapse;margin-top:8px;}
+.gpp th,.gpp td{border-bottom:1px solid #999;padding:5px 4px;text-align:left;vertical-align:top;}
+.gpp.small th,.gpp.small td{padding:3px 2px;}
+.gpp .r{text-align:right;}
+.gpp .tot{font-size:16px;font-weight:700;}
+.gpp .meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:8px;}
+.gpp .line{border-top:1px dashed #000;margin:8px 0;}
