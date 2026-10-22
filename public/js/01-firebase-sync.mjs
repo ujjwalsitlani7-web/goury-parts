@@ -9,9 +9,11 @@
   //   6. Audit Trail — 📈 button in XLS editor, price history on savePart and xlsSaveRow
   // ============================================================
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, updateDoc, getDoc, getDocFromServer, getDocs, deleteDoc, onSnapshot, collection, writeBatch, serverTimestamp, increment as fsIncrement, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+  // Shop data now lives in Convex. convex-firestore.mjs speaks the same API as Firebase,
+  // so the sync code below is unchanged. (staffSync + jarvis_inbox still go to Firebase.)
+  import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, updateDoc, getDoc, getDocFromServer, getDocs, deleteDoc, onSnapshot, collection, writeBatch, serverTimestamp, increment as fsIncrement, query, where, orderBy } from "./convex-firestore.mjs";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "./convex-firestore.mjs";
+  import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "./convex-firestore.mjs";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCpRHhfAA7xiawuhKHR4tJmqxe8_1pa1Tk",
@@ -275,7 +277,7 @@
   // Pull all state keys from Firestore on startup
   window.firebasePull = async function() {
     if (!window._firebaseAuthed) {
-      await new Promise(r=>{let w=0;const iv=setInterval(()=>{w+=200;if(window._firebaseAuthed||w>=5000){clearInterval(iv);r();}},200);});
+      await new Promise(r=>{let w=0;const iv=setInterval(()=>{w+=200;if(window._firebaseAuthed||(w>=5000&&!window._convexSigningIn)){clearInterval(iv);r();}},200);});
       if (!window._firebaseAuthed) { setSyncStatus('offline','⚡ Auth timeout'); return null; }
     }
     setSyncStatus('syncing', '☁ Loading cloud data…');
