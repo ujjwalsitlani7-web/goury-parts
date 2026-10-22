@@ -2,10 +2,10 @@
 // Network-first for the app's own files, so every Vercel deploy reaches users on
 // their next load, with the cached copy as an offline fallback. Requests to other
 // origins (Firebase, AI APIs, CDNs) are never touched: they handle their own caching.
-const CACHE = 'goury-shell-v4';
+const CACHE = 'goury-shell-v5';
 const SHELL = [
   '/', '/index.html', '/manifest.json',
-  '/css/main.css', '/css/agent.css', '/css/extras.css',
+  '/css/main.css', '/css/agent.css', '/css/extras.css', '/css/dark-theme.css',
   '/js/00-ai-proxy.js', '/js/convex-firestore.mjs', '/js/01-firebase-sync.mjs', '/js/02-lib-loader.js', '/js/03-app-core.js',
   '/js/04-app-features.js', '/js/05-i18n.js', '/js/06-catalogue.js',
   '/js/07-sw-register.js', '/js/08-goury-os-cns.js', '/js/09-cns-ui.js',
