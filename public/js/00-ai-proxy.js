@@ -11,6 +11,10 @@
   function getToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (_) { return ''; } }
   function setToken(t) { try { localStorage.setItem(TOKEN_KEY, t); } catch (_) {} }
   function clearToken() { try { localStorage.removeItem(TOKEN_KEY); } catch (_) {} }
+  // If someone taps "Later", don't ask again until the app is reopened.
+  var DECLINED_KEY = 'goury.shopTokenDeclined';
+  function declined() { try { return sessionStorage.getItem(DECLINED_KEY) === '1'; } catch (_) { return false; } }
+  function setDeclined() { try { sessionStorage.setItem(DECLINED_KEY, '1'); } catch (_) {} }
 
   // One prompt at a time, even if several AI calls fail together.
   var pending = null;
@@ -42,7 +46,7 @@
         if (!v) { input.focus(); return; }
         setToken(v); done(v);
       };
-      ov.querySelector('#_stLater').onclick = function () { done(''); };
+      ov.querySelector('#_stLater').onclick = function () { setDeclined(); done(''); };
       input.addEventListener('keydown', function (e) { if (e.key === 'Enter') ov.querySelector('#_stSave').click(); });
       setTimeout(function () { input.focus(); }, 50);
     });
@@ -66,14 +70,15 @@
     var url = typeof input === 'string' ? input : (input && input.url) || '';
     if (url.indexOf(ANTHROPIC) !== 0) return realFetch(input, opts);
 
-    var token = getToken();
-    if (!token) token = await askForToken('Enter the shop token once to turn on AI features on this phone. Ask the owner if you don\u2019t have it.');
-    if (!token) return realFetch('/api/claude', { method: 'POST' }); // yields a clean 401 the app already displays
-
-    var res = await toProxy(opts, token);
-    if (res.status === 401 && res.headers.get('x-proxy-auth') === 'failed') {
+    // Try first; only ask for the token if the server says it's missing or wrong.
+    // (If AI isn't configured on the server yet, it answers 503 and nobody is asked.)
+    var res = await toProxy(opts, getToken());
+    if (res.status === 401 && res.headers.get('x-proxy-auth') === 'failed' && !declined()) {
+      var hadToken = !!getToken();
       clearToken();
-      token = await askForToken('That shop token didn\u2019t work. Check it and try again.');
+      var token = await askForToken(hadToken
+        ? 'That shop token didn\u2019t work. Check it and try again.'
+        : 'Enter the shop token once to turn on AI features on this phone. Ask the owner if you don\u2019t have it.');
       if (token) res = await toProxy(opts, token);
     }
     return res;
