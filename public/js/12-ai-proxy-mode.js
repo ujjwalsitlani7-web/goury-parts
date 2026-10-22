@@ -59,16 +59,24 @@
   login.style.display = 'none';
 
   var started = Date.now();
+  var setupShown = false;
   var timer = setInterval(function () {
+    if (state.session) { clearInterval(timer); try { wait.remove(); } catch (_) {} return; }
     var haveUsers = state.users && state.users.length > 0;
-    var giveUp = !navigator.onLine || pullDone || Date.now() - started > 20000;
-    if (!haveUsers && !giveUp) return;
-    clearInterval(timer);
-    try { wait.remove(); } catch (_) {}
     if (haveUsers) {
+      // Users can arrive late (via the live listener) even after the first pull
+      // said "nothing yet". Switch to the normal login whenever they show up.
+      clearInterval(timer);
+      try { wait.remove(); } catch (_) {}
       try { initLogin(); } catch (e) { console.warn('[login] refresh failed:', e && e.message); }
-    } else {
-      setup.style.display = 'block'; // genuinely a new shop (or no connection)
+      return;
     }
+    var elapsed = Date.now() - started;
+    if (!setupShown && (!navigator.onLine || (pullDone && elapsed > 6000) || elapsed > 20000)) {
+      setupShown = true;
+      try { wait.remove(); } catch (_) {}
+      setup.style.display = 'block'; // looks like a new shop (or no connection)
+    }
+    if (elapsed > 120000) clearInterval(timer); // stop watching after 2 minutes
   }, 250);
 })();
