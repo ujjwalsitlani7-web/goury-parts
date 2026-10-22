@@ -2,6 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Visitors who have never used the app on this browser see the landing page first.
+   Staff devices (any saved app data), the installed app, and ?app links go straight in. */
+(function(){try{
+  if (/[?&]app\b/.test(location.search)) { sessionStorage.setItem('gp.app','1'); return; }
+  if (sessionStorage.getItem('gp.app')) return;
+  var installed = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
+  if (!installed && localStorage.length === 0) location.replace('/landing/');
+}catch(e){}})();
+</script>
 <!-- CSP: blocks any injected external script tag not from self/jsdelivr/gstatic, blocks plugins,
      locks base URI and form targets. 'unsafe-inline' is required by the app's inline handlers —
      inline-injection defense remains escapeHtml() at render boundaries. -->
