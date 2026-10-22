@@ -25,7 +25,7 @@
       ov.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(2,6,23,.72);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:20px;';
       ov.innerHTML =
         '<div style="width:100%;max-width:340px;background:linear-gradient(160deg,#0f172a,#1e1b4b);border:1px solid rgba(165,243,252,.25);border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.5);font-family:inherit;">' +
-          '<div style="font-size:15px;font-weight:800;color:#a5f3fc;margin-bottom:4px;">\uD83D\uDD11 Connect this device to Shop AI</div>' +
+          '<div style="font-size:15px;font-weight:800;color:#a5f3fc;margin-bottom:4px;">\uD83D\uDD11 Connect this device to the shop</div>' +
           '<div id="_stMsg" style="font-size:12px;color:rgba(255,255,255,.65);line-height:1.5;margin-bottom:14px;"></div>' +
           '<input id="_stInput" type="password" autocomplete="off" placeholder="Shop token" style="width:100%;box-sizing:border-box;padding:11px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:white;font-size:16px;margin-bottom:12px;">' +
           '<div style="display:flex;gap:8px;">' +
@@ -74,8 +74,10 @@
     // (If AI isn't configured on the server yet, it answers 503 and nobody is asked.)
     var res = await toProxy(opts, getToken());
     if (res.status === 401 && res.headers.get('x-proxy-auth') === 'failed' && !declined()) {
+      // Don't delete the saved token here: the same token also connects this device to
+      // the shop's data, so a refused AI call must never disconnect it. Only a new token
+      // typed into the box replaces it.
       var hadToken = !!getToken();
-      clearToken();
       var token = await askForToken(hadToken
         ? 'That shop token didn\u2019t work. Check it and try again.'
         : 'Enter the shop token once to turn on AI features on this phone. Ask the owner if you don\u2019t have it.');
@@ -85,4 +87,6 @@
   };
 
   window.resetShopToken = function () { clearToken(); };
+  // Shared with the Convex data connection (convex-firestore.mjs).
+  window.askShopToken = function (message) { return askForToken(message); };
 })();
